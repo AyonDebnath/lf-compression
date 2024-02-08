@@ -1,10 +1,11 @@
 import subprocess
 from io import BytesIO
 from PIL import Image
-from jpeg_decoder import *
+import jpeg_decoder as jpeg
 import numpy as np
 import cv2
 from Coordinate import *
+from struct import unpack
 
 
 marker_mapping = {
@@ -166,10 +167,10 @@ if __name__ == "__main__":
 
     output = [[0 for _ in range(width*scaling_factor)] for _ in range(height*scaling_factor)]
 
-    img = JPEG_decoder(converted_image_path, output, scaling_factor, coordinate)
-    img.decode()
+    jpeg.initialize(converted_image_path, output, scaling_factor, coordinate)
+    jpeg.decode()
 
-    output = np.array(img.output).astype(np.uint8)
+    output = np.array(jpeg.output).astype(np.uint8)
 
     # Display the image
     # cv2.imshow('Result Image', np.array(output).astype(np.uint8))
