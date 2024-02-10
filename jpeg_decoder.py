@@ -1,7 +1,7 @@
 from struct import unpack
 import huffmanTable
 import main
-import idct as IDCT
+import idct as idct
 from stream import *
 
 """
@@ -35,13 +35,13 @@ def DefineQuantizationTables(data):
 
 def BuildMatrix(st, idx, quant, olddccoeff):
     global huffman_tables
-    i = IDCT.IDCT()
+    idct.initialize()
 
     code = huffman_tables[0 + idx].GetCode(st)
     bits = st.GetBitN(code)
     dccoeff = main.DecodeNumber(code, bits) + olddccoeff
 
-    i.base[0] = (dccoeff) * quant[0]
+    idct.base[0] = (dccoeff) * quant[0]
     l = 1
     while l < 64:
         code = huffman_tables[16 + idx].GetCode(st)
@@ -58,13 +58,13 @@ def BuildMatrix(st, idx, quant, olddccoeff):
 
         if l < 64:
             coeff = main.DecodeNumber(code, bits)
-            i.base[l] = coeff * quant[l]
+            idct.base[l] = coeff * quant[l]
             l += 1
 
-    i.rearrange_using_zigzag()
-    i.perform_IDCT()
+    idct.rearrange_using_zigzag()
+    idct.perform_IDCT()
 
-    return i, dccoeff
+    return idct.base, dccoeff
 
 def StartOfScan(data, hdrlen):
     global height, width, quantMapping, quant, img_data, output, scaling_factor
@@ -75,19 +75,19 @@ def StartOfScan(data, hdrlen):
     for y in range(height // 8):
         for x in range(width // 8):
 
-            matL, oldlumdccoeff = BuildMatrix(
+            matL_base, oldlumdccoeff = BuildMatrix(
                 st, 0, quant[quantMapping[0]], oldlumdccoeff
             )
-            matCr, oldCrdccoeff = BuildMatrix(
+            matCr_base, oldCrdccoeff = BuildMatrix(
                 st, 1, quant[quantMapping[1]], oldCrdccoeff
             )
-            matCb, oldCbdccoeff = BuildMatrix(
+            matCb_base, oldCbdccoeff = BuildMatrix(
                 st, 1, quant[quantMapping[2]], oldCbdccoeff
             )
             if(x == coordinate.getX() and y - coordinate.getY()):
                 # continue
                 main.DrawCompressed(x, y, img_data, output, scaling_factor)
-            main.DrawMatrix(x, y, matL.base, matCb.base, matCr.base, output, scaling_factor)
+            main.DrawMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
     return lenchunk + hdrlen
 
 def BaselineDCT(data):
