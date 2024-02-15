@@ -4,7 +4,6 @@ from PIL import Image
 import jpeg_decoder as jpeg
 import numpy as np
 import cv2
-from Coordinate import *
 from struct import unpack
 
 
@@ -157,7 +156,7 @@ if __name__ == "__main__":
 
     coordinate = input("Enter x and y coordinate of the block to compress separated by a space.")
     coordinate = coordinate.split()
-    coordinate = Coordinate(int(coordinate[0]), int(coordinate[1]))
+    coordinate = (int(coordinate[0]), int(coordinate[1]))
 
     scaling_factor = 1
 

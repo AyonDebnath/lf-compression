@@ -13,7 +13,7 @@ quant = {}
 quantMapping = []
 output = []
 scaling_factor = 0
-coordinate = 0
+coordinate = (0, 0)
 img_data = ''
 height = 0
 width = 0
@@ -84,7 +84,7 @@ def StartOfScan(data, hdrlen):
             matCb_base, oldCbdccoeff = BuildMatrix(
                 1, quant[quantMapping[2]], oldCbdccoeff
             )
-            if(x == coordinate.getX() and y - coordinate.getY()):
+            if x == coordinate[0] and y == coordinate[1]:
                 # continue
                 main.DrawCompressed(x, y, img_data, output, scaling_factor)
             main.DrawMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
