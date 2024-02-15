@@ -87,7 +87,7 @@ def StartOfScan(data, hdrlen):
             if x == coordinate[0] and y == coordinate[1]:
                 # continue
                 main.DrawCompressed(x, y, img_data, output, scaling_factor)
-            main.DrawMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
+            main.WriteMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
     return lenchunk + hdrlen
 
 def BaselineDCT(data):

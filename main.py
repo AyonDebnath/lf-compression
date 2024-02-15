@@ -18,6 +18,9 @@ marker_mapping = {
 }
 
 def convertImageWithSamplingFactor(input_image, output_image, sampling_factor):
+    """
+        Converts the JPEG image provided as input to a Y, Cr, Cb colour channel.
+    """
     command = [
         "convert",
         input_image,
@@ -64,9 +67,9 @@ def ColorConversion(Y, Cr, Cb):
     return (Clamp(B + 128), Clamp(G + 128), Clamp(R + 128))
 
 
-def DrawMatrix(x, y, matL, matCb, matCr, output, scaling_factor ):
+def WriteMatrix(x, y, matL, matCb, matCr, output, scaling_factor):
     """
-    Loops over a single 8x8 MCU and draws it on Tkinter canvas
+    Loops over a single 8x8 MCU and writes it on a 2d array representing the output image.
     """
 
     for yy in range(8):
