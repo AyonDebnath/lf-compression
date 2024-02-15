@@ -1,4 +1,4 @@
-
+import stream
 """
 A Huffman Table class
 """
@@ -33,15 +33,15 @@ def GetHuffmanBits(lengths, elements):
             BitsFromLengths(hfTables[-1][0], elements[ii], i)
             ii += 1
 
-def Find(st, root, elements):
+def Find(root, elements):
     r = root
     while isinstance(r, list):
-        r = r[st.GetBit()]
+        r = r[stream.GetBit()]
     return r
 
-def GetCode(st, root, elements):
+def GetCode(root, elements):
     while True:
-        res = Find(st, root, elements)
+        res = Find(root, elements)
         if res == 0:
             return 0
         elif res != -1:

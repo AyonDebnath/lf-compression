@@ -2,7 +2,7 @@ from struct import unpack
 import huffmanTable
 import main
 import idct as idct
-from stream import *
+import stream
 
 """
 JPEG class for decoding a baseline encoded JPEG image
@@ -33,18 +33,18 @@ def DefineQuantizationTables(data):
         quant[hdr] = main.GetArray("B", data[1: 1 + 64], 64)
         data = data[65:]
 
-def BuildMatrix(st, idx, quant, olddccoeff):
+def BuildMatrix(idx, quant, olddccoeff):
     global huffman_tables
     idct.initialize()
 
-    code = huffmanTable.GetCode(st, huffman_tables[0 + idx][0], huffman_tables[0 + idx][1])
-    bits = st.GetBitN(code)
+    code = huffmanTable.GetCode(huffman_tables[0 + idx][0], huffman_tables[0 + idx][1])
+    bits = stream.GetBitN(code)
     dccoeff = main.DecodeNumber(code, bits) + olddccoeff
 
     idct.base[0] = (dccoeff) * quant[0]
     l = 1
     while l < 64:
-        code = huffmanTable.GetCode(st, huffman_tables[16 + idx][0], huffman_tables[16 + idx][1])
+        code = huffmanTable.GetCode(huffman_tables[16 + idx][0], huffman_tables[16 + idx][1])
         if code == 0:
             break
 
@@ -54,7 +54,7 @@ def BuildMatrix(st, idx, quant, olddccoeff):
             l += code >> 4
             code = code & 0x0F
 
-        bits = st.GetBitN(code)
+        bits = stream.GetBitN(code)
 
         if l < 64:
             coeff = main.DecodeNumber(code, bits)
@@ -70,19 +70,19 @@ def StartOfScan(data, hdrlen):
     global height, width, quantMapping, quant, img_data, output, scaling_factor
     data, lenchunk = main.RemoveFF00(data[hdrlen:])
 
-    st = Stream(data)
+    st = stream.initialize(data)
     oldlumdccoeff, oldCbdccoeff, oldCrdccoeff = 0, 0, 0
     for y in range(height // 8):
         for x in range(width // 8):
 
             matL_base, oldlumdccoeff = BuildMatrix(
-                st, 0, quant[quantMapping[0]], oldlumdccoeff
+                0, quant[quantMapping[0]], oldlumdccoeff
             )
             matCr_base, oldCrdccoeff = BuildMatrix(
-                st, 1, quant[quantMapping[1]], oldCrdccoeff
+                 1, quant[quantMapping[1]], oldCrdccoeff
             )
             matCb_base, oldCbdccoeff = BuildMatrix(
-                st, 1, quant[quantMapping[2]], oldCbdccoeff
+                1, quant[quantMapping[2]], oldCbdccoeff
             )
             if(x == coordinate.getX() and y - coordinate.getY()):
                 # continue
