@@ -1,44 +1,48 @@
-class HuffmanTable:
-    """
-    A Huffman Table class
-    """
 
-    def __init__(self):
-        self.root = []
-        self.elements = []
+"""
+A Huffman Table class
+"""
+hfTables = []
 
-    def BitsFromLengths(self, root, element, pos):
-        if isinstance(root, list):
-            if pos == 0:
-                if len(root) < 2:
-                    root.append(element)
-                    return True
-                return False
-            for i in [0, 1]:
-                if len(root) == i:
-                    root.append([])
-                if self.BitsFromLengths(root[i], element, pos - 1) == True:
-                    return True
-        return False
+def initialize():
+    global hfTables
+    root = []
+    elements = []
+    hfTables.append([root, elements])
 
-    def GetHuffmanBits(self, lengths, elements):
-        self.elements = elements
-        ii = 0
-        for i in range(len(lengths)):
-            for j in range(lengths[i]):
-                self.BitsFromLengths(self.root, elements[ii], i)
-                ii += 1
+def BitsFromLengths(root, element, pos):
+    if isinstance(root, list):
+        if pos == 0:
+            if len(root) < 2:
+                root.append(element)
+                return True
+            return False
+        for i in [0, 1]:
+            if len(root) == i:
+                root.append([])
+            if BitsFromLengths(root[i], element, pos - 1) == True:
+                return True
+    return False
 
-    def Find(self, st):
-        r = self.root
-        while isinstance(r, list):
-            r = r[st.GetBit()]
-        return r
+def GetHuffmanBits(lengths, elements):
+    global hfTables
+    hfTables[-1][1] = elements
+    ii = 0
+    for i in range(len(lengths)):
+        for j in range(lengths[i]):
+            BitsFromLengths(hfTables[-1][0], elements[ii], i)
+            ii += 1
 
-    def GetCode(self, st):
-        while True:
-            res = self.Find(st)
-            if res == 0:
-                return 0
-            elif res != -1:
-                return res
+def Find(st, root, elements):
+    r = root
+    while isinstance(r, list):
+        r = r[st.GetBit()]
+    return r
+
+def GetCode(st, root, elements):
+    while True:
+        res = Find(st, root, elements)
+        if res == 0:
+            return 0
+        elif res != -1:
+            return res

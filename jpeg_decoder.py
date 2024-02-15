@@ -37,14 +37,14 @@ def BuildMatrix(st, idx, quant, olddccoeff):
     global huffman_tables
     idct.initialize()
 
-    code = huffman_tables[0 + idx].GetCode(st)
+    code = huffmanTable.GetCode(st, huffman_tables[0 + idx][0], huffman_tables[0 + idx][1])
     bits = st.GetBitN(code)
     dccoeff = main.DecodeNumber(code, bits) + olddccoeff
 
     idct.base[0] = (dccoeff) * quant[0]
     l = 1
     while l < 64:
-        code = huffman_tables[16 + idx].GetCode(st)
+        code = huffmanTable.GetCode(st, huffman_tables[16 + idx][0], huffman_tables[16 + idx][1])
         if code == 0:
             break
 
@@ -115,9 +115,9 @@ def decodeHuffman(data):
             elements += main.GetArray("B", data[offset: offset + i], i)
             offset += i
 
-        hf = huffmanTable.HuffmanTable()
-        hf.GetHuffmanBits(lengths, elements)
-        huffman_tables[header] = hf
+        huffmanTable.initialize()
+        huffmanTable.GetHuffmanBits(lengths, elements)
+        huffman_tables[header] = huffmanTable.hfTables[-1]
         data = data[offset:]
 
 def decode():
