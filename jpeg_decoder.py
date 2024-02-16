@@ -1,8 +1,11 @@
-from struct import unpack
 import huffmanTable
 import main
 import idct as idct
 import stream
+import subprocess
+from io import BytesIO
+from PIL import Image
+from struct import unpack
 
 """
 JPEG class for decoding a baseline encoded JPEG image
@@ -26,25 +29,170 @@ def initialize(image_file, output_param, scaling_factor_param, coordinate_param)
     with open(image_file, "rb") as f:
         img_data = f.read()
 
+marker_mapping = {
+    0xFFD8: "Start of Image",
+    0xFFE0: "Application Default Header",
+    0xFFDB: "Quantization Table",
+    0xFFC0: "Start of Frame",
+    0xFFC4: "Huffman Table",
+    0xFFDA: "Start of Scan",
+    0xFFD9: "End of Image",
+}
+
+def convertImageWithSamplingFactor(input_image, output_image, sampling_factor):
+    """
+        Converts the JPEG image provided as input to a Y, Cr, Cb colour channel.
+    """
+    command = [
+        "convert",
+        input_image,
+        "-sampling-factor",
+        sampling_factor,
+        output_image
+    ]
+
+    try:
+        subprocess.run(command, check=True)
+        print("Image converted with sampling factor 4:4:4.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+
+def PrintMatrix(m):
+    """
+    A convenience function for printing matrices
+    """
+    for j in range(8):
+        print("|", end="")
+        for i in range(8):
+            print("%d  |" % m[i + j * 8], end="\t")
+        print()
+    print()
+
+
+def Clamp(col):
+    """
+    Makes sure col is between 0 and 255.
+    """
+    col = 255 if col > 255 else col
+    col = 0 if col < 0 else col
+    return int(col)
+
+
+def ColorConversion(Y, Cr, Cb):
+    """
+    Converts Y, Cr and Cb to RGB color space
+    """
+    R = Cr * (2 - 2 * 0.299) + Y
+    B = Cb * (2 - 2 * 0.114) + Y
+    G = (Y - 0.114 * B - 0.299 * R) / 0.587
+    return (Clamp(B + 128), Clamp(G + 128), Clamp(R + 128))
+
+
+def WriteMatrix(x, y, matL, matCb, matCr, output, scaling_factor):
+    """
+    Loops over a single 8x8 MCU and writes it on a 2d array representing the output image.
+    """
+
+    for yy in range(8):
+        for xx in range(8):
+            x1, y1 = (x * 8 + xx) * scaling_factor, (y * 8 + yy) * scaling_factor
+
+            # colour the entire block T\
+            for i in range(scaling_factor):
+                for j in range(scaling_factor):
+                    output[y1+i][x1+j] = ColorConversion(
+                matL[yy][xx], matCb[yy][xx], matCr[yy][xx]
+            )
+
+
+def DrawCompressed(x, y, comp_image, output, scaling_factor):
+    comp_image = Image.open(BytesIO(comp_image))
+    for yy in range(8):
+        for xx in range(8):
+            x1, y1 = (x * 8 + xx) * scaling_factor, (y * 8 + yy) * scaling_factor
+            for i in range(scaling_factor):
+                for j in range(scaling_factor):
+                    output[y1+i][x1+j] = comp_image.getpixel((x, y))
+    return
+
+
+def RemoveFF00(data):
+    """
+    Removes 0x00 after 0xff in the image scan section of JPEG
+    """
+    datapro = []
+    i = 0
+    while True:
+        b, bnext = unpack("BB", data[i: i + 2])
+        if b == 0xFF:
+            if bnext != 0:
+                break
+            datapro.append(data[i])
+            i += 2
+        else:
+            datapro.append(data[i])
+            i += 1
+    return datapro, i
+
+
+def GetArray(type, l, length):
+    """
+    A convenience function for unpacking an array from bitstream
+    """
+    s = ""
+    for i in range(length):
+        s = s + type
+    return list(unpack(s, l[:length]))
+
+
+def DecodeNumber(code, bits):
+    l = 2 ** (code - 1)
+    if bits >= l:
+        return bits
+    else:
+        return bits - (2 * l - 1)
+
+def hex_to_rgb(hex_color):
+    # Convert hexadecimal color to RGB
+    if(type(hex_color) == str):
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:(i + 2)], 16) for i in (0, 2, 4))
+    else:
+        return (hex_color, hex_color, hex_color)
+
+
+
+def create_image(hex_colors, width, height):
+
+    # Fill the image with colors
+    for x in range(width):
+        for y in range(height):
+            hex_color = hex_colors[x][y]
+            rgb_color = hex_to_rgb(hex_color)
+            hex_colors[x][y] = rgb_color
+
+    return hex_colors
+
 def DefineQuantizationTables(data):
     global quant
     while (len(data) > 0):
         (hdr,) = unpack("B", data[0:1])
-        quant[hdr] = main.GetArray("B", data[1: 1 + 64], 64)
+        quant[hdr] = GetArray("B", data[1: 1 + 64], 64)
         data = data[65:]
 
 def BuildMatrix(idx, quant, olddccoeff):
     global huffman_tables
     idct.initialize()
 
-    code = huffmanTable.GetCode(huffman_tables[0 + idx][0], huffman_tables[0 + idx][1])
+    code = huffmanTable.GetCode(huffman_tables[0 + idx][0])
     bits = stream.GetBitN(code)
-    dccoeff = main.DecodeNumber(code, bits) + olddccoeff
+    dccoeff = DecodeNumber(code, bits) + olddccoeff
 
     idct.base[0] = (dccoeff) * quant[0]
     l = 1
     while l < 64:
-        code = huffmanTable.GetCode(huffman_tables[16 + idx][0], huffman_tables[16 + idx][1])
+        code = huffmanTable.GetCode(huffman_tables[16 + idx][0])
         if code == 0:
             break
 
@@ -57,7 +205,7 @@ def BuildMatrix(idx, quant, olddccoeff):
         bits = stream.GetBitN(code)
 
         if l < 64:
-            coeff = main.DecodeNumber(code, bits)
+            coeff = DecodeNumber(code, bits)
             idct.base[l] = coeff * quant[l]
             l += 1
 
@@ -68,9 +216,9 @@ def BuildMatrix(idx, quant, olddccoeff):
 
 def StartOfScan(data, hdrlen):
     global height, width, quantMapping, quant, img_data, output, scaling_factor
-    data, lenchunk = main.RemoveFF00(data[hdrlen:])
+    data, lenchunk = RemoveFF00(data[hdrlen:])
 
-    st = stream.initialize(data)
+    stream.initialize(data)
     oldlumdccoeff, oldCbdccoeff, oldCrdccoeff = 0, 0, 0
     for y in range(height // 8):
         for x in range(width // 8):
@@ -86,8 +234,8 @@ def StartOfScan(data, hdrlen):
             )
             if x == coordinate[0] and y == coordinate[1]:
                 # continue
-                main.DrawCompressed(x, y, img_data, output, scaling_factor)
-            main.WriteMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
+                DrawCompressed(x, y, img_data, output, scaling_factor)
+            WriteMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
     return lenchunk + hdrlen
 
 def BaselineDCT(data):
@@ -107,12 +255,12 @@ def decodeHuffman(data):
         # print(header, header & 0x0F, (header >> 4) & 0x0F)
         offset += 1
 
-        lengths = main.GetArray("B", data[offset: offset + 16], 16)
+        lengths = GetArray("B", data[offset: offset + 16], 16)
         offset += 16
 
         elements = []
         for i in lengths:
-            elements += main.GetArray("B", data[offset: offset + i], i)
+            elements += GetArray("B", data[offset: offset + i], i)
             offset += i
 
         huffmanTable.initialize()
