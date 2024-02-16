@@ -106,7 +106,7 @@ def WriteMatrix(x, y, matL, matCb, matCr, output, scaling_factor):
             )
 
 
-def DrawCompressed(x, y, comp_image, output, scaling_factor):
+def WriteCompressedMatrix(x, y, comp_image, output, scaling_factor):
     comp_image = Image.open(BytesIO(comp_image))
     for yy in range(8):
         for xx in range(8):
@@ -234,7 +234,7 @@ def StartOfScan(data, hdrlen):
             )
             if x == coordinate[0] and y == coordinate[1]:
                 # continue
-                DrawCompressed(x, y, img_data, output, scaling_factor)
+                WriteCompressedMatrix(x, y, img_data, output, scaling_factor)
             WriteMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
     return lenchunk + hdrlen
 

@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     scaling_factor = 1
 
-    convertImageWithSamplingFactor(input_image_path, converted_image_path, "4:4:4")
+    jpeg.convertImageWithSamplingFactor(input_image_path, converted_image_path, "4:4:4")
 
     width, height = Image.open(converted_image_path).size
 
