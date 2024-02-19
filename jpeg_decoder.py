@@ -16,16 +16,16 @@ quant = {}
 quantMapping = []
 output = []
 scaling_factor = 0
-coordinate = (0, 0)
+blockCoordinate = (0, 0)
 img_data = ''
 height = 0
 width = 0
 
-def initialize(image_file, output_param, scaling_factor_param, coordinate_param):
-    global output, scaling_factor, coordinate, img_data
+def initialize(image_file, output_param, scaling_factor_param, blockCoordinate_param):
+    global output, scaling_factor, blockCoordinate, img_data
     output = output_param
     scaling_factor = scaling_factor_param
-    coordinate = coordinate_param
+    blockCoordinate = blockCoordinate_param
     with open(image_file, "rb") as f:
         img_data = f.read()
 
@@ -185,14 +185,14 @@ def BuildMatrix(idx, quant, olddccoeff):
     global huffman_tables
     idct.initialize()
 
-    code = huffmanTable.GetCode(huffman_tables[0 + idx][0])
+    code = huffmanTable.GetRoot(huffman_tables[0 + idx][0])
     bits = stream.GetBitN(code)
     dccoeff = DecodeNumber(code, bits) + olddccoeff
 
     idct.base[0] = (dccoeff) * quant[0]
     l = 1
     while l < 64:
-        code = huffmanTable.GetCode(huffman_tables[16 + idx][0])
+        code = huffmanTable.GetRoot(huffman_tables[16 + idx][0])
         if code == 0:
             break
 
@@ -219,6 +219,7 @@ def StartOfScan(data, hdrlen):
     data, lenchunk = RemoveFF00(data[hdrlen:])
 
     stream.initialize(data)
+    print(id(data))
     oldlumdccoeff, oldCbdccoeff, oldCrdccoeff = 0, 0, 0
     for y in range(height // 8):
         for x in range(width // 8):
@@ -232,7 +233,7 @@ def StartOfScan(data, hdrlen):
             matCb_base, oldCbdccoeff = BuildMatrix(
                 1, quant[quantMapping[2]], oldCbdccoeff
             )
-            if x == coordinate[0] and y == coordinate[1]:
+            if x == blockCoordinate[0] and y == blockCoordinate[1]:
                 # continue
                 WriteCompressedMatrix(x, y, img_data, output, scaling_factor)
             WriteMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor)
@@ -269,9 +270,12 @@ def decodeHuffman(data):
         data = data[offset:]
 
 def decode():
+    """
+    Entry point to the decoder. It takes in the image data, loops through all the markers and decodes the Image.
+    """
 
     data = img_data
-    while True:
+    while len(data) != 0:
         (marker,) = unpack(">H", data[0:2])
         print(hex(marker))
         # print(marker_mapping.get(marker))
@@ -293,5 +297,4 @@ def decode():
             elif marker == 0xFFDA:
                 len_chunk = StartOfScan(data, len_chunk)
             data = data[len_chunk:]
-        if len(data) == 0:
-            break
+

@@ -44,7 +44,12 @@ def rearrange_using_zigzag():
 
 def perform_IDCT():
     global base
-    out = [list(range(8)) for i in range(8)]
+
+    out = []
+    for i in range(8):
+        out.append([])
+        for j in range(8):
+            out[i].append(0)
 
     for x in range(8):
         for y in range(8):
@@ -57,5 +62,5 @@ def perform_IDCT():
                             * idct_table[v][y]
                     )
             out[y][x] = local_sum // 4
-
+    print(out)
     base = out

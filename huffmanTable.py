@@ -1,34 +1,38 @@
 import stream
+
 hfTables = []
+
 
 def initialize():
     """
     Initializes the required variables.
     """
     global hfTables
-    root = []
+    tree = []
 
     elements = []
-    hfTables.append([root, elements])
+    hfTables.append([tree, elements])
 
-def BitsFromLengths(root, element, pos):
+
+def BitsFromLengths(tree, element, pos):
     """
 
     The root list contains nested lists and represents a binary tree of the elements. Each element of the huffman table is passed in as a parameter from the GetHuffmanBits() function. This function is called for every element in the huffman code. The elements are grouped together in lists of 2 elements to
     represent a binary tree.
     """
-    if isinstance(root, list):
+    if isinstance(tree, list):
         if pos == 0:
-            if len(root) < 2:
-                root.append(element)
+            if len(tree) < 2:
+                tree.append(element)
                 return True
             return False
         for i in [0, 1]:
-            if len(root) == i:
-                root.append([])
-            if BitsFromLengths(root[i], element, pos - 1) == True:
+            if len(tree) == i:
+                tree.append([])
+            if BitsFromLengths(tree[i], element, pos - 1) == True:
                 return True
     return False
+
 
 def GetHuffmanBits(lengths, elements):
     """
@@ -44,19 +48,15 @@ def GetHuffmanBits(lengths, elements):
             BitsFromLengths(hfTables[-1][0], elements[ii], i)
             ii += 1
 
-def Find(root):
-    r = root
-    while isinstance(r, list):
-        r = r[stream.GetBit()]
-    return r
 
-def GetCode(root):
+def GetRoot(tree):
     """
-    traverses the tree/root and returns the decoded bits using the Huffman table.
+    traverses the tree/root and returns the root node value of the tree
     """
-    while True:
-        res = Find(root)
-        if res == 0:
-            return 0
-        elif res != -1:
-            return res
+    root = tree
+    while isinstance(root, list):
+        root = root[stream.GetBit()]
+    if root == 0:
+        return 0
+    elif root != -1:
+        return root
