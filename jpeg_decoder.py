@@ -21,13 +21,6 @@ img_data = ''
 height = 0
 width = 0
 
-def initialize(image_file, output_param, scaling_factor_param, blockCoordinate_param):
-    global output, scaling_factor, blockCoordinate, img_data
-    output = output_param
-    scaling_factor = scaling_factor_param
-    blockCoordinate = blockCoordinate_param
-    with open(image_file, "rb") as f:
-        img_data = f.read()
 
 marker_mapping = {
     0xFFD8: "Start of Image",
@@ -39,9 +32,21 @@ marker_mapping = {
     0xFFD9: "End of Image",
 }
 
+
+def initialize(image_file, output_param, scaling_factor_param, blockCoordinate_param):
+    """
+    Initializes the required global variables.
+    """
+    global output, scaling_factor, blockCoordinate, img_data
+    output = output_param
+    scaling_factor = scaling_factor_param
+    blockCoordinate = blockCoordinate_param
+    with open(image_file, "rb") as f:
+        img_data = f.read()
+
 def convertImageWithSamplingFactor(input_image, output_image, sampling_factor):
     """
-        Converts the JPEG image provided as input to a Y, Cr, Cb colour channel.
+    Converts the JPEG image provided as input to a Y, Cr, Cb colour channel.
     """
     command = [
         "convert",
@@ -91,9 +96,8 @@ def ColorConversion(Y, Cr, Cb):
 
 def WriteMatrix(x, y, matL, matCb, matCr, output, scaling_factor):
     """
-    Loops over a single 8x8 MCU and writes it on a 2d array representing the output image.
+    Loops over a single 8x8 MCU and writes the decoded value on a 2d array representing the output image.
     """
-
     for yy in range(8):
         for xx in range(8):
             x1, y1 = (x * 8 + xx) * scaling_factor, (y * 8 + yy) * scaling_factor
@@ -107,6 +111,9 @@ def WriteMatrix(x, y, matL, matCb, matCr, output, scaling_factor):
 
 
 def WriteCompressedMatrix(x, y, comp_image, output, scaling_factor):
+    """
+    Loops over a single 8x8 MCU and copies it on a 2d array representing the output image.
+    """
     comp_image = Image.open(BytesIO(comp_image))
     for yy in range(8):
         for xx in range(8):
@@ -147,34 +154,22 @@ def GetArray(type, l, length):
 
 
 def DecodeNumber(code, bits):
+    """
+    code:
+    bits:
+    extract the delta encoded DC coefficient
+    """
     l = 2 ** (code - 1)
     if bits >= l:
         return bits
     else:
         return bits - (2 * l - 1)
 
-def hex_to_rgb(hex_color):
-    # Convert hexadecimal color to RGB
-    if(type(hex_color) == str):
-        hex_color = hex_color.lstrip('#')
-        return tuple(int(hex_color[i:(i + 2)], 16) for i in (0, 2, 4))
-    else:
-        return (hex_color, hex_color, hex_color)
-
-
-
-def create_image(hex_colors, width, height):
-
-    # Fill the image with colors
-    for x in range(width):
-        for y in range(height):
-            hex_color = hex_colors[x][y]
-            rgb_color = hex_to_rgb(hex_color)
-            hex_colors[x][y] = rgb_color
-
-    return hex_colors
 
 def DefineQuantizationTables(data):
+    """
+    This function first parses the header of a Quantization Table section. Subsequently, it stores the quantization data in a dictionary, utilizing the header value as the respective key. For luminance, the header value is set to 0, while for chrominance, it is set to 1.
+    """
     global quant
     while (len(data) > 0):
         (hdr,) = unpack("B", data[0:1])
@@ -182,6 +177,10 @@ def DefineQuantizationTables(data):
         data = data[65:]
 
 def BuildMatrix(idx, quant, olddccoeff):
+    """
+    quant : quantization table
+    creates an inverse discreate cosine transformation matrix and Y, Cr, and Cb matrices.
+    """
     global huffman_tables
     idct.initialize()
 
@@ -215,6 +214,9 @@ def BuildMatrix(idx, quant, olddccoeff):
     return idct.base, dccoeff
 
 def StartOfScan(data, hdrlen):
+    """
+    This is the most involved step. All the decoded information so far serves as a map that helps us in navigating and decoding the actual image data which happens over here..
+    """
     global height, width, quantMapping, quant, img_data, output, scaling_factor
     data, lenchunk = RemoveFF00(data[hdrlen:])
 
@@ -240,6 +242,9 @@ def StartOfScan(data, hdrlen):
     return lenchunk + hdrlen
 
 def BaselineDCT(data):
+    """
+    The BaselineDCT method extracts essential data from the Start of Frame (SOF) section. It then compiles the quantization table numbers for each component, storing them in the quantMapping list.
+    """
     global height, width, quantMapping
     hdr, height, width, components = unpack(">BHHB", data[0:6])
     # print("size %ix%i" % (self.width,  self.height))
@@ -249,6 +254,9 @@ def BaselineDCT(data):
         quantMapping.append(QtbId)
 
 def decodeHuffman(data):
+    """
+    When the huffman marker, 0xFFC4, is reached, it gets the huffman tables from the image data and stores it in the huffman_tables list
+    """
     global huffman_tables
     while (len(data) > 0):
         offset = 0
@@ -273,7 +281,6 @@ def decode():
     """
     Entry point to the decoder. It takes in the image data, loops through all the markers and decodes the Image.
     """
-
     data = img_data
     while len(data) != 0:
         (marker,) = unpack(">H", data[0:2])

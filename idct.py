@@ -62,5 +62,4 @@ def perform_IDCT():
                             * idct_table[v][y]
                     )
             out[y][x] = local_sum // 4
-    print(out)
     base = out
