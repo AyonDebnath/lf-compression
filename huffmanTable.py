@@ -51,7 +51,7 @@ def GetHuffmanBits(lengths, elements):
 
 def GetRoot(tree):
     """
-    traverses the tree/root and returns the root node value of the tree
+    traverses the tree/root and returns the encoded root node value of the tree
     """
     root = tree
     while isinstance(root, list):

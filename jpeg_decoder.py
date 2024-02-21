@@ -11,15 +11,15 @@ from struct import unpack
 JPEG class for decoding a baseline encoded JPEG image
 """
 
-huffman_tables = {}
-quant = {}
-quantMapping = []
-output = []
-scaling_factor = 0
-blockCoordinate = (0, 0)
-img_data = ''
-height = 0
-width = 0
+huffman_tables = {} # containing all the huffman tables
+quant = {} # quantization table data with the header value as the respective key.
+quantMapping = [] # quantization table numbers for each component
+output = [] # array containing the data for the output image
+scaling_factor = 1 # optional variable. can be modified to change the scale of the output image.
+blockCoordinate = (0, 0) # coordinates of the block to keep compressed.
+img_data = '' # contains the image data
+height = 0 # variable to store the height of the image
+width = 0 # variable to store the width of the image
 
 
 marker_mapping = {
@@ -61,18 +61,6 @@ def convertImageWithSamplingFactor(input_image, output_image, sampling_factor):
         print("Image converted with sampling factor 4:4:4.")
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
-
-
-def PrintMatrix(m):
-    """
-    A convenience function for printing matrices
-    """
-    for j in range(8):
-        print("|", end="")
-        for i in range(8):
-            print("%d  |" % m[i + j * 8], end="\t")
-        print()
-    print()
 
 
 def Clamp(col):
@@ -155,8 +143,9 @@ def GetArray(type, l, length):
 
 def DecodeNumber(code, bits):
     """
-    code:
-    bits:
+    code: the number of bits used to encode a number.
+    bits: the actual encoded number
+
     extract the delta encoded DC coefficient
     """
     l = 2 ** (code - 1)
@@ -168,6 +157,8 @@ def DecodeNumber(code, bits):
 
 def DefineQuantizationTables(data):
     """
+    data: chunk of the image data containing the information about the quantization tables.
+
     This function first parses the header of a Quantization Table section. Subsequently, it stores the quantization data in a dictionary, utilizing the header value as the respective key. For luminance, the header value is set to 0, while for chrominance, it is set to 1.
     """
     global quant
@@ -178,14 +169,17 @@ def DefineQuantizationTables(data):
 
 def BuildMatrix(idx, quant, olddccoeff):
     """
+    idx: 0 for luminance and 1 for others.
     quant : quantization table
+    olddccoeff: old/previours dc coefficient
+
     creates an inverse discreate cosine transformation matrix and Y, Cr, and Cb matrices.
     """
     global huffman_tables
     idct.initialize()
 
-    code = huffmanTable.GetRoot(huffman_tables[0 + idx][0])
-    bits = stream.GetBitN(code)
+    code = huffmanTable.GetRoot(huffman_tables[0 + idx][0]) # the number of bits used to encode a number
+    bits = stream.GetBitN(code) # actual encoded number
     dccoeff = DecodeNumber(code, bits) + olddccoeff
 
     idct.base[0] = (dccoeff) * quant[0]
@@ -215,6 +209,9 @@ def BuildMatrix(idx, quant, olddccoeff):
 
 def StartOfScan(data, hdrlen):
     """
+    data: chunk of the image data that contains the "actual" data for the image
+    hdrlen: length of the header at the beginning of the data.
+
     This is the most involved step. All the decoded information so far serves as a map that helps us in navigating and decoding the actual image data which happens over here..
     """
     global height, width, quantMapping, quant, img_data, output, scaling_factor
@@ -243,6 +240,8 @@ def StartOfScan(data, hdrlen):
 
 def BaselineDCT(data):
     """
+    data: chunk of the image data containing essential image information such as the quantization table numbers.
+
     The BaselineDCT method extracts essential data from the Start of Frame (SOF) section. It then compiles the quantization table numbers for each component, storing them in the quantMapping list.
     """
     global height, width, quantMapping
@@ -255,6 +254,9 @@ def BaselineDCT(data):
 
 def decodeHuffman(data):
     """
+
+    data: chunk of the image data containing the encoded huffman table
+
     When the huffman marker, 0xFFC4, is reached, it gets the huffman tables from the image data and stores it in the huffman_tables list
     """
     global huffman_tables
@@ -281,7 +283,7 @@ def decode():
     """
     Entry point to the decoder. It takes in the image data, loops through all the markers and decodes the Image.
     """
-    data = img_data
+    data = img_data # image data
     while len(data) != 0:
         (marker,) = unpack(">H", data[0:2])
         print(hex(marker))

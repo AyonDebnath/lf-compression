@@ -15,7 +15,7 @@ def initialize(data_param):
 
 def GetBit():
     """
-    returns the bit in position pos
+    returns the bit in position pos from the data variable
     """
     global pos
     b = data[pos >> 3]
@@ -25,7 +25,7 @@ def GetBit():
 
 def GetBitN(l):
     """
-    returns l number of bits from position pos
+    returns l number of bits from position pos from the data variable
     """
     val = 0
     for _ in range(l):
