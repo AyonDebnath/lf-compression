@@ -7,6 +7,9 @@ idct_precision = 0
 idct_table = []
 
 def initialize():
+    """
+    Initializes the required variables.
+    """
     global base, zigzag, idct_precision, idct_table
     base = [0] * 64
     zigzag = [
@@ -30,12 +33,18 @@ def initialize():
         idct_table.append(row)
 
 def NormCoeff(n):
+    """
+    helper function for the IDCT calculation
+    """
     if n == 0:
         return 1.0 / math.sqrt(2.0)
     else:
         return 1.0
 
 def rearrange_using_zigzag():
+    """
+    rearrange the MCU matrix by undoing the zigzag encoding
+    """
     global zigzag
     for x in range(8):
         for y in range(8):
@@ -43,8 +52,10 @@ def rearrange_using_zigzag():
     return zigzag
 
 def perform_IDCT():
+    """
+    undo the Discrete Cosine Transformation
+    """
     global base
-
     out = []
     for i in range(8):
         out.append([])
