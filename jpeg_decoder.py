@@ -1,5 +1,4 @@
 import huffmanTable
-import main
 import idct as idct
 import stream
 import subprocess
@@ -35,6 +34,11 @@ marker_mapping = {
 
 def initialize(image_file, output_param, scaling_factor_param, blockCoordinate_param):
     """
+    image_file: image provided by the user in the Y, Cr, Cb colour channel
+    output_param: array containing the data for the decoded image calculated by the decoder
+    scaling_factor_param: sampling factors to be used by the JPEG encoder for chroma downsampling.
+    blockCoordinate_param: coordinates of the block to keep compressed.
+
     Initializes the required global variables.
     """
     global output, scaling_factor, blockCoordinate, img_data
@@ -44,8 +48,12 @@ def initialize(image_file, output_param, scaling_factor_param, blockCoordinate_p
     with open(image_file, "rb") as f:
         img_data = f.read()
 
-def convertImageWithSamplingFactor(input_image, output_image, sampling_factor):
+def convertImageWithSamplingFactor(input_image, converted_image, sampling_factor):
     """
+    input_imae: image provided by the user
+    output_image: converted image with the with chroma sampling
+    sampling_factor: sampling factors to be used by the JPEG encoder for chroma downsampling.
+
     Converts the JPEG image provided as input to a Y, Cr, Cb colour channel.
     """
     command = [
@@ -53,7 +61,7 @@ def convertImageWithSamplingFactor(input_image, output_image, sampling_factor):
         input_image,
         "-sampling-factor",
         sampling_factor,
-        output_image
+        converted_image
     ]
 
     try:
@@ -65,6 +73,8 @@ def convertImageWithSamplingFactor(input_image, output_image, sampling_factor):
 
 def Clamp(col):
     """
+    col: colour value
+
     Makes sure col is between 0 and 255.
     """
     col = 255 if col > 255 else col
@@ -74,6 +84,9 @@ def Clamp(col):
 
 def ColorConversion(Y, Cr, Cb):
     """
+    Y: Luminance value
+    Cr: Red component value
+    Cb: Blue component value
     Converts Y, Cr and Cb to RGB color space
     """
     R = Cr * (2 - 2 * 0.299) + Y
@@ -84,6 +97,15 @@ def ColorConversion(Y, Cr, Cb):
 
 def WriteMatrix(x, y, matL, matCb, matCr, output, scaling_factor):
     """
+    x: value of the x coordinate in the MCU block
+    y: value of the y coordinate in the MCU block
+    matL: Luminance matrix
+    matCb: Blue component matrix
+    matCr: Red component matrix
+    output: the array of the output image.
+    scaling_factor: scaling factor if we want to scale the output image
+
+
     Loops over a single 8x8 MCU and writes the decoded value on a 2d array representing the output image.
     """
     for yy in range(8):
@@ -100,6 +122,12 @@ def WriteMatrix(x, y, matL, matCb, matCr, output, scaling_factor):
 
 def WriteCompressedMatrix(x, y, comp_image, output, scaling_factor):
     """
+    x: value of the x coordinate in the MCU block
+    y: value of the y coordinate in the MCU block
+    comp_image: compressed image, the image taken as input from the user
+    output: the array of the output image.
+    scaling_factor: scaling factor if we want to scale the output image
+
     Loops over a single 8x8 MCU and copies it on a 2d array representing the output image.
     """
     comp_image = Image.open(BytesIO(comp_image))
@@ -114,6 +142,8 @@ def WriteCompressedMatrix(x, y, comp_image, output, scaling_factor):
 
 def RemoveFF00(data):
     """
+    data: image data which contains the 0x00 marker
+
     Removes 0x00 after 0xff in the image scan section of JPEG
     """
     datapro = []
@@ -133,6 +163,10 @@ def RemoveFF00(data):
 
 def GetArray(type, l, length):
     """
+    type: format string
+    l: data containing the packed array
+    length: length of the array
+
     A convenience function for unpacking an array from bitstream
     """
     s = ""
