@@ -22,7 +22,6 @@ if __name__ == "__main__":
 
     # Converting the input image to Y, Cr, Cb format
     jpeg.convertImageWithSamplingFactor(input_image_path, converted_image_path, "4:4:4")
-
     width, height = Image.open(converted_image_path).size
 
     # array that will store the decoded image.
@@ -35,4 +34,15 @@ if __name__ == "__main__":
     # saving the decoded image in the images directory
     output = np.array(output).astype(np.uint8)
     cv2.imwrite('images/' + input_image_path.split('/')[-1].split('.')[0] + '_output.png', output)
-    print("Output has been saved in the Images Directory.")
+
+    print("Output has been saved in the Images Directory.\n")
+
+    # printing the YCrCb value at the given pixel coordinate
+    image = Image.open(converted_image_path)
+    print("The YCrCb value at the image pixel is: ", image.getpixel((int(imageCoordinate[0]), int(imageCoordinate[1]))))
+
+    # printing the decoded YCrCb value at the given pixel coordinate
+    image = Image.open("Images/" + input_image_path.split('/')[-1].split('.')[0] + '_output.png')
+    print("The decoded YCrCb value at the image pixel is: ", image.getpixel((int(imageCoordinate[0]), int(imageCoordinate[1]))))
+
+
