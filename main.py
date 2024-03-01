@@ -1,3 +1,5 @@
+import math
+
 from PIL import Image
 import jpeg_decoder as jpeg
 import numpy as np
@@ -6,11 +8,15 @@ import cv2
 if __name__ == "__main__":
     input_image_path = input("Enter the input image file path: ")
     converted_image_path = "converted_image.jpeg"  # Temporary image in the Y, Cr, Cb format
-    blockCoordinate = input("Enter x and y coordinate of the block to compress separated by a space.")
+    imageCoordinate = input("Enter x and y coordinate of the image pixel to decode separated by a space.")
 
-    # Converting the coordinates of the block to a tuple of integers
-    blockCoordinate = blockCoordinate.split()
-    blockCoordinate = (int(blockCoordinate[0]), int(blockCoordinate[1]))
+
+    # Converting the coordinates of the pixel to a list
+    imageCoordinate = imageCoordinate.split()
+
+    xBlockCoordinate = int(imageCoordinate[0])//8
+    yBlockCoordinate = int(imageCoordinate[1])//8
+    blockCoordinate = (xBlockCoordinate, yBlockCoordinate)
 
     scaling_factor = 1
 
