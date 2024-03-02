@@ -11,7 +11,7 @@ def initialize(data_param):
     """
     global data
     data = data_param
-    print(id(data))
+    # print(id(data))
 
 def GetBit():
     """
