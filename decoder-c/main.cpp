@@ -15,9 +15,9 @@ int main() {
     std::cin >> pixelCoordinate;
 
     // Converting the coordinates of the pixel to a pair of integers
-//    std::istringstream iss(pixelCoordinate);
-//    int xPixelCoordinate, yPixelCoordinate;
-//    iss >> xPixelCoordinate >> yPixelCoordinate;
+    std::istringstream iss(pixelCoordinate);
+    int xPixelCoordinate, yPixelCoordinate;
+    iss >> xPixelCoordinate >> yPixelCoordinate;
 
     return 0;
 }
