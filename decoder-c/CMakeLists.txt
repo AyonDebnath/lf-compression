@@ -9,6 +9,8 @@ find_package(OpenCV)
 include_directories(${OpenCV_INCLUDE_DIRS})
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(decoder_c main.cpp)
+add_executable(decoder_c main.cpp
+        jpeg_decoder.cpp
+        jpeg_decoder.h)
 
 target_link_libraries(decoder_c ${OpenCV_LIBS})
