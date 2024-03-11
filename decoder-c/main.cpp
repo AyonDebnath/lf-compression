@@ -4,14 +4,13 @@
 #include <cstdio>
 #include <string>
 #include <stdio.h>
+#include <fstream>
 #include "jpeg_decoder.h"
-#include <opencv2/opencv.hpp>
+//#include <opencv2/opencv.hpp>
 
-void convertImageWithSamplingFactor(const std::string& input_image_path, const std::string& converted_image_path, const std::string& sampling_factor);
-void initialize(const std::string& converted_image_path, std::vector<std::vector<int>>& output, int scaling_factor, std::pair<int, int> blockCoordinate, std::pair<int, int> pixelCoordinate);
-void decode(std::vector<std::vector<int>>& output);
-void saveImage(const std::string& output_image_path, const std::vector<std::vector<int>>& output);
+void saveImage(const std::string& output_image_path, const std::vector<std::vector<int> >& output);
 void getJpegDimensions(FILE* infile, int& width, int& height);
+std::vector<uint8_t> readImageBinary(const std::string& filename);
 
 int main() {
     std::string input_image_path;
@@ -22,15 +21,11 @@ int main() {
     std::string pixelCoordinate;
     std::cout << "Enter x and y coordinate of the image pixel to decode separated by a space: ";
     int pixelCoordinateX, pixelCoordinateY;
-    std::cin >> pixelCoordinate;
+    std::cin >> pixelCoordinateX;
+    std::cin>> pixelCoordinateY;
 
-    // Converting the coordinates of the pixel to a pair of integers
-    std::istringstream iss(pixelCoordinate);
-    int xPixelCoordinate, yPixelCoordinate;
-    iss >> xPixelCoordinate >> yPixelCoordinate;
-
-    int xBlockCoordinate = xBlockCoordinate / 8;
-    int yBlockCoordinate = yPixelCoordinate / 8;
+    int xBlockCoordinate = pixelCoordinateX / 8;
+    int yBlockCoordinate = pixelCoordinateY / 8;
     std::pair<int, int> blockCoordinate(xBlockCoordinate, yBlockCoordinate);
     int scaling_factor = 1;
 
@@ -50,45 +45,47 @@ int main() {
     int width, height;
     getJpegDimensions(file, width, height);
     std::cout << width;
-    std::cout << height;
+    std::cout << height << std::endl;
 
     // Vector that will store the decoded image
-    std::vector<std::vector<int>> output(height * scaling_factor, std::vector<int>(width * scaling_factor));
+    std::vector<std::vector<int> > output(height * scaling_factor, std::vector<int>(width * scaling_factor));
 
     // Initialize and decode the image
+    std::vector<uint8_t> imageData = readImageBinary(converted_image_path);
+    decodeImage(output, imageData);
     // TODO initialize(converted_image_path, output, scaling_factor, blockCoordinate, pixelCoordinate);
     // TODO decode(output);
 
     //TODO DELETE temporary output
-    output = {
-            {255, 0, 255, 0},
-            {0, 255, 0, 255},
-            {255, 0, 255, 0},
-            {0, 255, 0, 255}
-    };
+//    output = {
+//            {255, 0, 255, 0},
+//            {0, 255, 0, 255},
+//            {255, 0, 255, 0},
+//            {0, 255, 0, 255}
+//    };
 
     // Save the decoded image
-    saveImage("../Images/" + input_image_path.substr(input_image_path.find_last_of('/') + 1, input_image_path.find_last_of('.') - input_image_path.find_last_of('/') - 1) + "_output.png", output);
+//    saveImage("../Images/" + input_image_path.substr(input_image_path.find_last_of('/') + 1, input_image_path.find_last_of('.') - input_image_path.find_last_of('/') - 1) + "_output.png", output);
 
-    std::cout << "Output has been saved in the Images Directory." << std::endl;
+//    std::cout << "Output has been saved in the Images Directory." << std::endl;
     return 0;
 }
 
 // Function to save a 2D array as an image // TODO will delete it , not necessary
-void saveImage(const std::string& filename, const std::vector<std::vector<int>>& array) {
-    // Create a CV Mat object to hold the image data
-    cv::Mat image(array.size(), array[0].size(), CV_8UC1);
-
-    // Copy the array data to the image
-    for (int i = 0; i < array.size(); ++i) {
-        for (int j = 0; j < array[i].size(); ++j) {
-            image.at<uchar>(i, j) = static_cast<uchar>(array[i][j]);
-        }
-    }
-
-    // Save the image
-    cv::imwrite(filename, image);
-}
+//void saveImage(const std::string& filename, const std::vector<std::vector<int>>& array) {
+//    // Create a CV Mat object to hold the image data
+//    cv::Mat image(array.size(), array[0].size(), CV_8UC1);
+//
+//    // Copy the array data to the image
+//    for (int i = 0; i < array.size(); ++i) {
+//        for (int j = 0; j < array[i].size(); ++j) {
+//            image.at<uchar>(i, j) = static_cast<uchar>(array[i][j]);
+//        }
+//    }
+//
+//    // Save the image
+//    cv::imwrite(filename, image);
+//}
 
 
 void getJpegDimensions(FILE* infile, int& width, int& height) {
@@ -130,4 +127,24 @@ void getJpegDimensions(FILE* infile, int& width, int& height) {
     }
 
     fclose(infile);
+}
+
+std::vector<uint8_t> readImageBinary(const std::string& filename) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return std::vector<uint8_t>(); // Return an empty vector if file opening fails
+    }
+
+    // Determine the size of the file
+    file.seekg(0, std::ios::end);
+    std::streampos fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // Read the entire file into a vector
+    std::vector<uint8_t> imageData(fileSize);
+    file.read(reinterpret_cast<char*>(imageData.data()), fileSize);
+    file.close();
+
+    return imageData;
 }
