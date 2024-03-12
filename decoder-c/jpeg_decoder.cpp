@@ -22,6 +22,7 @@ void convertImageWithSamplingFactor(const std::string& input_image_path,
 // Define a function to decode Huffman
 void decodeHuffman(const std::vector<uint8_t>& chunk) {
     std::cout<<"decodeHuffman reached";
+    return;
     // Your implementation here
 }
 
@@ -47,9 +48,6 @@ void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8
     //For the stream class:
 //    std::vector<unsigned char> dataStream;
     int pos = 0;
-//    //For the huffmanTable class:
-//    std::vector<std::vector<int> > hfTables;
-
     std::vector<uint8_t> data = img_data;  // image data
     while (!data.empty()) {
         uint16_t marker = (data[0] << 8) + data[1];
@@ -59,12 +57,37 @@ void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8
         } else if (marker == 0xFFD9) {
             break;
         } else {
+
+            if (data.size() < 4) {
+                // Not enough data to read the length field
+                // might want to handle this case accordingly
+                // Added to fix corrupted Memory
+                break;
+            }
+
             uint16_t len_chunk = (data[2] << 8) + data[3];
+
+            if (len_chunk < 2) {
+                // Invalid length, maybe corrupted data
+                // might want to handle this case accordingly
+                // Added to fix corrupted Memory
+                break;
+            }
+
             len_chunk += 2;
+
+            if (data.size() < len_chunk) {
+                // Not enough data to read the entire chunk
+                // might want to handle this case accordingly
+                // Added to fix corrupted Memory
+                break;
+            }
+
             std::vector<uint8_t> chunk(data.begin() + 4, data.begin() + len_chunk);
             if (marker == 0xFFC4) {
                 decodeHuffman(chunk);
-            } else if (marker == 0xFFDB) {
+            }
+            else if (marker == 0xFFDB) {
                 DefineQuantizationTables(chunk);
             } else if (marker == 0xFFC0) {
                 BaselineDCT(chunk);
@@ -74,4 +97,5 @@ void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8
             data.erase(data.begin(), data.begin() + len_chunk);
         }
     }
+    return;
 }

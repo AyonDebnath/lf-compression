@@ -53,6 +53,7 @@ int main() {
     // Initialize and decode the image
     std::vector<uint8_t> imageData = readImageBinary(converted_image_path);
     decodeImage(output, imageData);
+
     // TODO initialize(converted_image_path, output, scaling_factor, blockCoordinate, pixelCoordinate);
     // TODO decode(output);
 
