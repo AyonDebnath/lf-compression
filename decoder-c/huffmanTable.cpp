@@ -8,7 +8,6 @@
 #include <variant>
 #include "stream.h"
 
-std::vector<std::vector<int> > hfTables;
 
 struct TreeNode;
 using NodeElement = std::variant<int, TreeNode*>;
@@ -65,6 +64,9 @@ struct Tree {
     }
 };
 
+
+std::vector<std::pair<Tree, std::vector<int>>> hfTables;
+
 bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode* currentRoot) {
     if (pos == 0) {
         if (tree.countElements(currentRoot) < 2) {
@@ -109,12 +111,11 @@ bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode* currentRoot) {
 }
 
 void GetHuffmanBits(std::vector<int>& lengths, std::vector<int>& elements) {
-    std::vector<int> tree;
-    hfTables.push_back({tree, elements});
+    hfTables.back().second = elements;
     int ii = 0;
     for (size_t i = 0; i < lengths.size(); ++i) {
         for (int j = 0; j < lengths[i]; ++j) {
-            BitsFromLengths(hfTables.back()[0], elements[ii], i);
+            BitsFromLengths(hfTables.back().first, elements[ii], i, hfTables.back().first.getRoot());
             ii++;
         }
     }
