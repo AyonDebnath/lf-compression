@@ -1,7 +1,10 @@
 # ninja log v5
-4	82	1710025118817959350	CMakeFiles/decoder_c.dir/huffmanTable.cpp.o	8f5e77cbe53087b
-17	771	1710024995047169197	CMakeFiles/decoder_c.dir/jpeg_decoder.cpp.o	631c9a8eb34d3ae9
-5	708	1710024508395166327	CMakeFiles/decoder_c.dir/stream.cpp.o	835bb2db486ffe3d
+2	713	1710267399774144768	CMakeFiles/decoder_c.dir/linkedList.cpp.o	d821e3198a2d583c
+0	56	1710267643401326152	build.ninja	2228efcc96b7e818
+2	776	1710267399837368145	CMakeFiles/decoder_c.dir/main.cpp.o	a09015063e973a38
 82	251	1710025118983854268	decoder_c	a57e183e39ae54d7
-16	784	1710024995059500196	CMakeFiles/decoder_c.dir/main.cpp.o	b106fe05660915ae
-0	56	1710194103493195642	build.ninja	2228efcc96b7e818
+2	681	1710267399740737726	CMakeFiles/decoder_c.dir/stream.cpp.o	c59f1353b3ffcb49
+13	546	1710267615753335066	CMakeFiles/decoder_c.dir/jpeg_decoder.cpp.o	dfc69a52ee16499b
+2	754	1710267399814979301	CMakeFiles/decoder_c.dir/huffmanTable.cpp.o	b99e75e36c544ed1
+1	67	1710267643401326152	build.ninja	2228efcc96b7e818
+4	124	1710267643529626618	decoder_c	16a04fb481b3c781

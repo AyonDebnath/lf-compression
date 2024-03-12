@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 void convertImageWithSamplingFactor(const std::string& input_image_path,
                                     const std::string& converted_image_path,
@@ -44,10 +45,10 @@ void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8
 
     // Variables:
     //For the stream class:
-    std::vector<unsigned char> dataStream;
+//    std::vector<unsigned char> dataStream;
     int pos = 0;
-    //For the huffmanTable class:
-    std::vector<std::vector<int> > hfTables;
+//    //For the huffmanTable class:
+//    std::vector<std::vector<int> > hfTables;
 
     std::vector<uint8_t> data = img_data;  // image data
     while (!data.empty()) {
