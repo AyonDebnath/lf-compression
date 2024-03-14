@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include "huffmanTable.h"
 
 void convertImageWithSamplingFactor(const std::string& input_image_path,
@@ -22,7 +23,6 @@ void convertImageWithSamplingFactor(const std::string& input_image_path,
 
 // Define a function to decode Huffman
 void decodeHuffman(const std::vector<uint8_t>& chunk) {
-    std::cout<<"decodeHuffman reached";
     size_t offset = 0;
 
     while (offset < chunk.size()) {
@@ -51,8 +51,14 @@ void decodeHuffman(const std::vector<uint8_t>& chunk) {
 }
 
 // Define a function to define quantization tables
-void DefineQuantizationTables(const std::vector<uint8_t>& chunk) {
-    // Your implementation here
+void DefineQuantizationTables(const std::vector<uint8_t>& chunk, std::unordered_map<int, std::vector<uint8_t>>& quant) {
+    size_t pos = 0;
+    while (pos < chunk.size()) {
+        uint8_t hdr = chunk[pos];
+        std::vector<uint8_t> quantData(chunk.begin() + pos + 1, chunk.begin() + pos + 65);
+        quant[hdr] = quantData;
+        pos += 65;
+    }
 }
 
 // Define a function for Baseline DCT
@@ -108,11 +114,13 @@ void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8
             }
 
             std::vector<uint8_t> chunk(data.begin() + 4, data.begin() + len_chunk);
+            std::unordered_map<int, std::vector<uint8_t>> quant;
+
             if (marker == 0xFFC4) {
                 decodeHuffman(chunk);
             }
             else if (marker == 0xFFDB) {
-                DefineQuantizationTables(chunk);
+                DefineQuantizationTables(chunk, quant);
             } else if (marker == 0xFFC0) {
                 BaselineDCT(chunk);
             } else if (marker == 0xFFDA) {
