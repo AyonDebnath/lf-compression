@@ -62,8 +62,21 @@ void DefineQuantizationTables(const std::vector<uint8_t>& chunk, std::unordered_
 }
 
 // Define a function for Baseline DCT
-void BaselineDCT(const std::vector<uint8_t>& chunk) {
-    // Your implementation here
+void BaselineDCT(const std::vector<uint8_t>& chunk, std::vector<int>& quantMapping, int& height, int& width) {
+
+    std::tuple<uint8_t, uint16_t, uint16_t, uint8_t> header;
+    std::memcpy(&header, &chunk[0], sizeof(header));
+    uint8_t hdr = std::get<0>(header);
+    height = std::get<1>(header);
+    width = std::get<2>(header);
+    uint8_t components = std::get<3>(header);
+
+    for (size_t i = 0; i < components; ++i) {
+        uint8_t id = chunk[6 + i * 3];
+        uint8_t samp = chunk[7 + i * 3];
+        uint8_t QtbId = chunk[8 + i * 3];
+        quantMapping.push_back(QtbId);
+    }
 }
 
 // Define a function for Start of Scan
@@ -75,10 +88,15 @@ int StartOfScan(const std::vector<uint8_t>& data, int len_chunk) {
 void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8_t>& img_data){
 
     // Variables:
+    int height, width;
+    std::vector<int> quantMapping;
+    std::unordered_map<int, std::vector<uint8_t>> quant;
     //For the stream class:
-//    std::vector<unsigned char> dataStream;
+    std::vector<unsigned char> dataStream;
+
     int pos = 0;
     std::vector<uint8_t> data = img_data;  // image data
+
     while (!data.empty()) {
         uint16_t marker = (data[0] << 8) + data[1];
         if (marker == 0xFFD8) {
@@ -114,7 +132,6 @@ void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8
             }
 
             std::vector<uint8_t> chunk(data.begin() + 4, data.begin() + len_chunk);
-            std::unordered_map<int, std::vector<uint8_t>> quant;
 
             if (marker == 0xFFC4) {
                 decodeHuffman(chunk);
@@ -122,12 +139,11 @@ void decodeImage(std::vector<std::vector<int> >& output, const std::vector<uint8
             else if (marker == 0xFFDB) {
                 DefineQuantizationTables(chunk, quant);
             } else if (marker == 0xFFC0) {
-                BaselineDCT(chunk);
+                BaselineDCT(chunk, quantMapping, height, width);
             } else if (marker == 0xFFDA) {
                 len_chunk = StartOfScan(data, len_chunk);
             }
             data.erase(data.begin(), data.begin() + len_chunk);
         }
     }
-    return;
 }
