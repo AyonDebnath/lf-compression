@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include "huffmanTable.h"
 
 void convertImageWithSamplingFactor(const std::string& input_image_path,
                                     const std::string& converted_image_path,
@@ -22,6 +23,29 @@ void convertImageWithSamplingFactor(const std::string& input_image_path,
 // Define a function to decode Huffman
 void decodeHuffman(const std::vector<uint8_t>& chunk) {
     std::cout<<"decodeHuffman reached";
+    size_t offset = 0;
+
+    while (offset < chunk.size()) {
+        uint8_t header = chunk[offset++];
+        std::vector<uint8_t> lengths;
+        for (int i = 0; i < 16; ++i) {
+            lengths.push_back(chunk[offset++]);
+        }
+
+        std::vector<uint8_t> elements;
+        for (auto length : lengths) {
+            for (int i = 0; i < length; ++i) {
+                elements.push_back(chunk[offset++]);
+            }
+        }
+
+        // Assuming HuffmanTable is a class with method initialize() and GetHuffmanBits()
+        std::vector<std::pair<Tree, std::vector<uint8_t>>> hfTables;
+        hfTables.push_back(std::make_pair(Tree(), std::vector<uint8_t>()));
+        GetHuffmanBits(lengths, elements, hfTables);
+        hfTables.resize(header + 1);
+        hfTables[header] = std::make_pair(hfTables.back().first, hfTables.back().second);
+    }
     return;
     // Your implementation here
 }

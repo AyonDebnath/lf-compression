@@ -13,6 +13,7 @@ add_executable(decoder_c main.cpp
         huffmanTable.cpp
         stream.cpp
         stream.h
+        huffmanTable.h
 )
 
 target_link_libraries(decoder_c ${OpenCV_LIBS})

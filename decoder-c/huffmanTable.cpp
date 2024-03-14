@@ -7,67 +7,11 @@
 #include <vector>
 #include <variant>
 #include "stream.h"
+#include "huffmanTable.h"
 
 
-struct TreeNode;
-using NodeElement = std::variant<int, TreeNode*>;
 
-struct TreeNode {
-    std::vector<NodeElement> elements;
-
-    TreeNode(const std::vector<NodeElement>& vals = {}) : elements(vals) {}
-};
-
-struct Tree {
-    TreeNode *root;
-
-    Tree(const std::vector<NodeElement> &rootElements) {
-        root = new TreeNode(rootElements);
-    }
-
-    void addChild(TreeNode *parent, TreeNode *child) {
-        parent->elements.push_back(child);
-    }
-
-    void addChild(TreeNode *node, int newData) {
-        node->elements.push_back(newData);
-    }
-
-    int countElements(TreeNode *node) {
-        return node->elements.size();
-    }
-
-    TreeNode *getRoot() const {
-        return root;
-    }
-
-    void print(TreeNode *node, int level = 0) {
-        if (node == nullptr)
-            return;
-
-        for (int i = 0; i < level; ++i)
-            std::cout << "  ";
-
-        std::cout << "Node elements: ";
-        for (const auto &element: node->elements) {
-            if (std::holds_alternative<int>(element))
-                std::cout << std::get<int>(element) << " ";
-            else if (std::holds_alternative<TreeNode *>(element))
-                std::cout << "TreeNode ";
-        }
-        std::cout << std::endl;
-
-        for (const auto &element: node->elements) {
-            if (std::holds_alternative<TreeNode *>(element))
-                print(std::get<TreeNode *>(element), level + 1);
-        }
-    }
-};
-
-
-std::vector<std::pair<Tree, std::vector<int>>> hfTables;
-
-bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode* currentRoot) {
+bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode& currentRoot) {
     if (pos == 0) {
         if (tree.countElements(currentRoot) < 2) {
             tree.addChild(currentRoot, element);
@@ -76,11 +20,12 @@ bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode* currentRoot) {
         return false;
     }
     for (int i = 0; i < 2; ++i) {
-        if (tree.countElements(tree.getRoot()) == i) {
-            tree.addChild( tree.getRoot(), new TreeNode());
+
+        if (tree.countElements(currentRoot) == i) {
+            tree.addChild(currentRoot, new TreeNode());
         }
 
-        std::vector<NodeElement> nodeElements = currentRoot->elements;
+        std::vector<NodeElement> nodeElements = currentRoot.elements;
 
 
         for (NodeElement& nodeElement :nodeElements) {
@@ -102,7 +47,7 @@ bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode* currentRoot) {
                 // Handle the case where the variant doesn't hold a TreeNode* ///Should ever be printed
             }
 
-            if(BitsFromLengths(tree, element, pos - 1, treeNode)){
+            if(BitsFromLengths(tree, element, pos - 1, *treeNode)){
                 return true;
             }
         }
@@ -110,12 +55,16 @@ bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode* currentRoot) {
     return false;
 }
 
-void GetHuffmanBits(std::vector<int>& lengths, std::vector<int>& elements) {
+void GetHuffmanBits(std::vector<uint8_t>& lengths, std::vector<uint8_t>& elements, std::vector<std::pair<Tree, std::vector<uint8_t>>>& hfTables) {
     hfTables.back().second = elements;
     int ii = 0;
     for (size_t i = 0; i < lengths.size(); ++i) {
         for (int j = 0; j < lengths[i]; ++j) {
-            BitsFromLengths(hfTables.back().first, elements[ii], i, hfTables.back().first.getRoot());
+            TreeNode * root = hfTables.back().first.getRoot();
+            if(root == nullptr){
+                continue;
+            }
+            BitsFromLengths(hfTables.back().first, elements[ii], i, *root);
             ii++;
         }
     }
