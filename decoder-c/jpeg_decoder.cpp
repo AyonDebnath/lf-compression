@@ -98,8 +98,8 @@ int DecodeNumber(int code, int bits) {
     }
 }
 
-std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<std::vector<uint8_t>>& base, int& idct_precision, std::vector<std::vector<uint8_t>>& zigzag, std::vector<std::vector<double>>& idct_table) {
-    std::vector<std::vector<uint8_t>> out;
+std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<uint8_t>& base, int& idct_precision, std::vector<std::vector<uint8_t>>& zigzag, std::vector<std::vector<double>>& idct_table) {
+    std::vector<std::vector<uint8_t>> out(8, std::vector<uint8_t>(8));
 
     for (int x = 0; x < 8; ++x) {
         for (int y = 0; y < 8; ++y) {
@@ -113,27 +113,20 @@ std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<std::vector<uint8_t>>
         }
     }
 
-    for (int x = 0; x < 8; ++x) {
-        for (int y = 0; y < 8; ++y) {
-            base[x][y] = out[x][y];
-        }
-    }
-    return base;
+    return out;
 }
 
-std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::unordered_map<int, std::vector<uint8_t>>& quant, int olddccoeff,
+std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vector<uint8_t>& quant, int olddccoeff,
                                                            std::vector<uint8_t>& data, int& pos) {
-    std::cout <<"Reached!"<<std::endl;
     int idct_precision = 8;
-    std::vector<std::vector<uint8_t>> base ={
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0}};
+    std::vector<uint8_t> base ={0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0};
 
     std::vector<std::vector<double>> idct_table;
 
@@ -162,14 +155,7 @@ std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::uno
     int bits = GetBitN(code, data, pos);
     int dccoeff = DecodeNumber(code, bits) + olddccoeff;
 
-    std::vector<uint8_t> temp = quant[0];
-    for(int i = 1; i < dccoeff; i ++){
-        for(int j = 0; j < dccoeff; j++){
-            temp.push_back(quant[0][j]);
-        }
-    }
-    base[0] = quant[0];
-
+    base[0] = dccoeff * quant[0];
     int l = 1;
     while(l < 64){
         code = GetRoot(hfTables[16+idx].first, data, pos);
@@ -187,13 +173,7 @@ std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::uno
         if(l < 64){
             int coeff = DecodeNumber(code, bits);
 
-            std::vector<uint8_t> temp = quant[l];
-            for(int i = 1; i < coeff; i ++){
-                for(int j = 0; j < coeff; j++){
-                    temp.push_back(quant[l][j]);
-                }
-            }
-            base[l] = quant[l];
+            base[l] = coeff * quant[l];
 
             l+=1;
         }
@@ -202,13 +182,12 @@ std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::uno
 //    rearrange_using_zigzag
     for (int x = 0; x < 8; ++x) {
         for (int y = 0; y < 8; ++y) {
-            zigzag[x][y] = base[zigzag[x][y]/8][zigzag[x][y] % 8]; //TODO: Definitely has some problems
+            zigzag[x][y] = base[zigzag[x][y]];
         }
     }
 
-    perform_IDCT(base, idct_precision, zigzag, idct_table);
 
-    return std::make_tuple(base, dccoeff);
+    return std::make_tuple(perform_IDCT(base, idct_precision, zigzag, idct_table), dccoeff);
 }
 
 std::tuple<std::vector<uint8_t>, int> RemoveFF00(const std::vector<uint8_t>& data) {
@@ -303,11 +282,12 @@ uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<i
         for (int x = 0; x < width / 8; ++x) {
 
             auto [matL_base, newlumdccoeff] = BuildMatrix(0,
-                                                          reinterpret_cast<std::unordered_map<int, std::vector<uint8_t>> &>(quant[quantMapping[0]]), oldlumdccoeff, dataStream, pos);
+                                                          quant[quantMapping[0]], oldlumdccoeff, dataStream, pos);
             auto [matCr_base, newCrdccoeff] = BuildMatrix(0,
-                                                          reinterpret_cast<std::unordered_map<int, std::vector<uint8_t>> &>(quant[quantMapping[1]]), oldCbdccoeff, dataStream, pos);
+                                                          quant[quantMapping[1]], oldCbdccoeff, dataStream, pos);
             auto [matCb_base, newCbdccoeff] = BuildMatrix(0,
-                                                          reinterpret_cast<std::unordered_map<int, std::vector<uint8_t>> &>(quant[quantMapping[2]]), oldCbdccoeff, dataStream, pos);
+                                                          quant[quantMapping[2]], oldCbdccoeff, dataStream, pos);
+
 
 
             if (x == blockCoordinate.first && y == blockCoordinate.second) {
