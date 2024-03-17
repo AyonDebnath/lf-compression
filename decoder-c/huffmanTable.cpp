@@ -70,15 +70,18 @@ void GetHuffmanBits(std::vector<uint8_t>& lengths, std::vector<uint8_t>& element
     }
 }
 
-int GetRoot(std::vector<int>& tree, std::vector<unsigned char>& data, int& pos) {
-    int root = 0;
-    while (!tree.empty() && tree[0] == -1) {
-        root = tree[root + 1 + GetBit(data, pos)];
-    }
-    if (root == 0) {
+int GetRoot(Tree tree, std::vector<unsigned char>& data, int& pos) {
+    NodeElement rootNodeElement;
+    if(tree.getRoot() == nullptr){
         return 0;
-    } else if (root != -1) {
-        return root;
     }
-    return 0; // Adjust return value according to your logic
+    while (true) {
+        rootNodeElement = (tree.getRoot()->elements[GetBit(data, pos)]);
+        if(std::holds_alternative<int>(rootNodeElement)){
+            int root = std::get<int>(rootNodeElement);
+            return root;
+        }
+
+        std::cout<< "GetRoot might enter infinite loop" <<std::endl;
+    }
 }

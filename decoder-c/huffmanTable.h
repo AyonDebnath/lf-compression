@@ -69,4 +69,5 @@ struct Tree {
 
 bool BitsFromLengths(Tree& tree, int element, int pos, TreeNode& currentRoot);
 void GetHuffmanBits(std::vector<uint8_t>& lengths, std::vector<uint8_t>& elements, std::vector<std::pair<Tree, std::vector<uint8_t>>>& hfTables);
+int GetRoot(Tree tree, std::vector<unsigned char>& data, int& pos);
 #endif //DECODER_C_HUFFMANTABLE_H

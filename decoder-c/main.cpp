@@ -18,11 +18,12 @@ int main() {
     std::cin >> input_image_path;
 
 //    std::string converted_image_name = "converted_image.jpeg";
-    std::string pixelCoordinate;
     std::cout << "Enter x and y coordinate of the image pixel to decode separated by a space: ";
     int pixelCoordinateX, pixelCoordinateY;
     std::cin >> pixelCoordinateX;
     std::cin>> pixelCoordinateY;
+
+    std::pair<int, int> pixelCoordinate(pixelCoordinateX, pixelCoordinateY);
 
     int xBlockCoordinate = pixelCoordinateX / 8;
     int yBlockCoordinate = pixelCoordinateY / 8;
@@ -48,11 +49,11 @@ int main() {
     std::cout << height << std::endl;
 
     // Vector that will store the decoded image
-    std::vector<std::vector<int> > output(height * scaling_factor, std::vector<int>(width * scaling_factor));
+    std::vector<std::vector<std::tuple<int, int, int>> > output(height * scaling_factor, std::vector<std::tuple<int, int, int>>(width * scaling_factor));
 
     // Initialize and decode the image
     std::vector<uint8_t> imageData = readImageBinary(converted_image_path);
-    decodeImage(output, imageData);
+    decodeImage(output, imageData, scaling_factor, blockCoordinate, pixelCoordinate);
 
     // TODO initialize(converted_image_path, output, scaling_factor, blockCoordinate, pixelCoordinate);
     // TODO decode(output);
