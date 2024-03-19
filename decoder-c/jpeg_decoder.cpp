@@ -25,31 +25,29 @@ void convertImageWithSamplingFactor(const std::string& input_image_path,
 }
 
 // Define a function to decode Huffman
-void decodeHuffman(const std::vector<uint8_t>& chunk) {
-    size_t offset = 0;
+void decodeHuffman(std::vector<uint8_t>& chunk) {
+    while (chunk.size() > 0) {
+        size_t offset = 0;
+        uint8_t header = chunk[offset];
+        offset += 1;
 
-    while (offset < chunk.size()) {
-        uint8_t header = chunk[offset++];
-        std::vector<uint8_t> lengths;
-        for (int i = 0; i < 16; ++i) {
-            lengths.push_back(chunk[offset++]);
-        }
+        std::vector<uint8_t> lengths(chunk.begin() + offset, chunk.begin() + offset + 16);
+        offset += 16;
 
         std::vector<uint8_t> elements;
-        for (auto length : lengths) {
-            for (int i = 0; i < length; ++i) {
-                elements.push_back(chunk[offset++]);
-            }
+        for (size_t i = 0; i < lengths.size(); ++i) {
+            std::vector<uint8_t> temp(chunk.begin() + offset, chunk.begin() + offset + lengths[i]);
+            elements.insert(elements.end(), temp.begin(), temp.end());
+            offset += lengths[i];
         }
 
-        // Assuming HuffmanTable is a class with method initialize() and GetHuffmanBits()
+
         hfTables.push_back(std::make_pair(Tree(), std::vector<uint8_t>()));
         GetHuffmanBits(lengths, elements, hfTables);
         hfTables.resize(header + 1);
         hfTables[header] = std::make_pair(hfTables.back().first, hfTables.back().second);
+        chunk.erase(chunk.begin(), chunk.begin() + offset);
     }
-    return;
-    // Your implementation here
 }
 
 // Define a function to define quantization tables
@@ -118,8 +116,10 @@ std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<uint8_t>& base, int& 
 
 std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vector<uint8_t>& quant, int olddccoeff,
                                                            std::vector<uint8_t>& data, int& pos) {
+
     int idct_precision = 8;
-    std::vector<uint8_t> base ={0, 0, 0, 0, 0, 0, 0, 0,
+    std::vector<uint8_t> base ={
+            0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0,
@@ -151,6 +151,7 @@ std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vec
 
     }
 
+    // TODO: GetRoot contains bug
     int code = GetRoot(hfTables[16+idx].first, data, pos);
     int bits = GetBitN(code, data, pos);
     int dccoeff = DecodeNumber(code, bits) + olddccoeff;
@@ -275,7 +276,8 @@ uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<i
                      std::vector<std::vector<std::tuple<int, int, int>>>& output, std::vector<uint8_t>& dataStream, int& pos, int& scaling_factor, std::pair<int, int>& blockCoordinate, std::pair<int, int>& pixelCoordinate) {
 
     auto [datapro, lenchunk] = RemoveFF00(std::vector<uint8_t>(data.begin() + hdrlen, data.end()));
-    dataStream = datapro; // TODO This line should deepcopy. It might not deepcopy over here.
+    dataStream = datapro;
+
     int oldlumdccoeff = 0, oldCbdccoeff = 0, oldCrdccoeff = 0;
 
     for (int y = 0; y < height / 8; ++y) {
@@ -284,7 +286,7 @@ uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<i
             auto [matL_base, newlumdccoeff] = BuildMatrix(0,
                                                           quant[quantMapping[0]], oldlumdccoeff, dataStream, pos);
             auto [matCr_base, newCrdccoeff] = BuildMatrix(0,
-                                                          quant[quantMapping[1]], oldCbdccoeff, dataStream, pos);
+                                                          quant[quantMapping[1]], oldCrdccoeff, dataStream, pos);
             auto [matCb_base, newCbdccoeff] = BuildMatrix(0,
                                                           quant[quantMapping[2]], oldCbdccoeff, dataStream, pos);
 
@@ -324,31 +326,8 @@ void decodeImage(std::vector<std::vector<std::tuple<int, int, int>>>& output, co
         } else if (marker == 0xFFD9) {
             break;
         } else {
-
-            if (data.size() < 4) {
-                // Not enough data to read the length field
-                // might want to handle this case accordingly
-                // Added to fix corrupted Memory
-                break;
-            }
-
             uint16_t len_chunk = (data[2] << 8) + data[3];
-
-            if (len_chunk < 2) {
-                // Invalid length, maybe corrupted data
-                // might want to handle this case accordingly
-                // Added to fix corrupted Memory
-                break;
-            }
-
             len_chunk += 2;
-
-            if (data.size() < len_chunk) {
-                // Not enough data to read the entire chunk
-                // might want to handle this case accordingly
-                // Added to fix corrupted Memory
-                break;
-            }
 
             std::vector<uint8_t> chunk(data.begin() + 4, data.begin() + len_chunk);
 

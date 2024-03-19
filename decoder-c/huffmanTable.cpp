@@ -61,9 +61,6 @@ void GetHuffmanBits(std::vector<uint8_t>& lengths, std::vector<uint8_t>& element
     for (size_t i = 0; i < lengths.size(); ++i) {
         for (int j = 0; j < lengths[i]; ++j) {
             TreeNode * root = hfTables.back().first.getRoot();
-            if(root == nullptr){
-                continue;
-            }
             BitsFromLengths(hfTables.back().first, elements[ii], i, *root);
             ii++;
         }
@@ -73,9 +70,11 @@ void GetHuffmanBits(std::vector<uint8_t>& lengths, std::vector<uint8_t>& element
 int GetRoot(Tree tree, std::vector<unsigned char>& data, int& pos) {
     NodeElement rootNodeElement;
     if(tree.getRoot() == nullptr){
+        std::cout << "Root is null" <<std::endl;
         return 0;
     }
     while (true) {
+        std::cout << "Root is NOT null" <<std::endl;
         rootNodeElement = (tree.getRoot()->elements[GetBit(data, pos)]);
         if(std::holds_alternative<int>(rootNodeElement)){
             int root = std::get<int>(rootNodeElement);

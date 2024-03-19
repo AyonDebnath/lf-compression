@@ -28,14 +28,32 @@ struct Tree {
     }
 
     void addChild(TreeNode& parent, TreeNode *child) {
-        parent.elements.push_back(child);
+        if(&parent == nullptr) {
+            root = child;
+            parent = *child;
+        }else{
+            parent.elements.push_back(child);
+        }
     }
 
     void addChild(TreeNode& node, int newData) {
-        node.elements.push_back(newData);
+        if(&node == nullptr){
+            NodeElement data = newData;
+            std::vector<NodeElement> vectorData = {};
+            vectorData.push_back(data);
+            node = TreeNode(vectorData);
+            root = &node;
+
+        }else{
+            node.elements.push_back(newData);
+        }
+
     }
 
     int countElements(TreeNode& node) {
+        if(&node == nullptr){
+            return 0;
+        }
         return node.elements.size();
     }
 
