@@ -6,7 +6,6 @@
 #include "huffmanTable.h"
 #include "stream.h"
 
-std::vector<std::pair<MinHeapNode*, std::vector<uint8_t>>> hfTables;
 std::unordered_map<uint8_t, std::pair<MinHeapNode*, std::vector<uint8_t>>> hfTablesMap;
 
 void convertImageWithSamplingFactor(const std::string& input_image_path,
@@ -23,6 +22,17 @@ void convertImageWithSamplingFactor(const std::string& input_image_path,
     } else {
         std::cerr << "Error: Failed to convert image.\n";
     }
+}
+
+std::vector<bool> uint8ToBits(const std::vector<uint8_t>& data) {
+    std::vector<bool> bits;
+    for (const auto& byte : data) {
+        for (int i = 7; i >= 0; --i) {
+            bool bit = (byte >> i) & 1;
+            bits.push_back(bit);
+        }
+    }
+    return bits;
 }
 
 // Define a function to decode Huffman
@@ -122,16 +132,6 @@ std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<uint8_t>& base, int& 
     return out;
 }
 
-std::vector<bool> uint8ToBits(const std::vector<uint8_t>& data) {
-    std::vector<bool> bits;
-    for (const auto& byte : data) {
-        for (int i = 7; i >= 0; --i) {
-            bool bit = (byte >> i) & 1;
-            bits.push_back(bit);
-        }
-    }
-    return bits;
-}
 
 std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vector<uint8_t>& quant, int olddccoeff,
                                                            std::vector<uint8_t>& data, int& pos) {
@@ -208,8 +208,6 @@ std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vec
 
     return std::make_tuple(perform_IDCT(base, idct_precision, zigzag, idct_table), dccoeff);
 
-//    std::vector<std::vector<uint8_t>> empty;
-//    return std::make_tuple(empty, 0);
 }
 
 std::tuple<std::vector<uint8_t>, int> RemoveFF00(const std::vector<uint8_t>& data) {
@@ -315,6 +313,7 @@ uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<i
 
             if (x == blockCoordinate.first && y == blockCoordinate.second) {
                 WriteDecodedMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor, pixelCoordinate);
+                return lenchunk+hdrlen;
             }
 
 //            WriteCompressedMatrix(x, y, img_data, output, scaling_factor);
