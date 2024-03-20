@@ -6,7 +6,8 @@
 #include "huffmanTable.h"
 #include "stream.h"
 
-//std::vector<std::pair<Tree, std::vector<uint8_t>>> hfTables;
+std::vector<std::pair<MinHeapNode*, std::vector<uint8_t>>> hfTables;
+std::unordered_map<uint8_t, std::pair<MinHeapNode*, std::vector<uint8_t>>> hfTablesMap;
 
 void convertImageWithSamplingFactor(const std::string& input_image_path,
                                     const std::string& converted_image_path,
@@ -41,7 +42,7 @@ void decodeHuffman(std::vector<uint8_t>& chunk) {
             offset += lengths[i];
         }
 
-        std::vector<unsigned char> frequencies;
+        std::vector<int> frequencies;
         for (int i = 0; i < lengths.size(); i ++) {
             if (lengths[i] != 0) {
                 for (int j = 0; j < lengths[i]; j ++){
@@ -52,10 +53,7 @@ void decodeHuffman(std::vector<uint8_t>& chunk) {
         }
 
 
-//        hfTables.push_back(std::make_pair(Tree(), std::vector<uint8_t>()));
-//        GetHuffmanBits(lengths, elements, hfTables);
-//        hfTables.resize(header + 1);
-//        hfTables[header] = std::make_pair(hfTables.back().first, hfTables.back().second);
+        HuffmanCodes(elements, frequencies, elements.size(), hfTablesMap, header);
         chunk.erase(chunk.begin(), chunk.begin() + offset);
     }
 }
@@ -124,82 +122,95 @@ std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<uint8_t>& base, int& 
     return out;
 }
 
-//std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vector<uint8_t>& quant, int olddccoeff,
-//                                                           std::vector<uint8_t>& data, int& pos) {
-//
-//    int idct_precision = 8;
-//    std::vector<uint8_t> base ={
-//            0, 0, 0, 0, 0, 0, 0, 0,
-//            0, 0, 0, 0, 0, 0, 0, 0,
-//            0, 0, 0, 0, 0, 0, 0, 0,
-//            0, 0, 0, 0, 0, 0, 0, 0,
-//            0, 0, 0, 0, 0, 0, 0, 0,
-//            0, 0, 0, 0, 0, 0, 0, 0,
-//            0, 0, 0, 0, 0, 0, 0, 0,
-//            0, 0, 0, 0, 0, 0, 0, 0};
-//
-//    std::vector<std::vector<double>> idct_table;
-//
-//    std::vector<std::vector<uint8_t>> zigzag = {
-//            {0, 1, 5, 6, 14, 15, 27, 28},
-//            {2, 4, 7, 13, 16, 26, 29, 42},
-//            {3, 8, 12, 17, 25, 30, 41, 43},
-//            {9, 11, 18, 24, 31, 40, 44, 53},
-//            {10, 19, 23, 32, 39, 45, 52, 54},
-//            {20, 22, 33, 38, 46, 51, 55, 60},
-//            {21, 34, 37, 47, 50, 56, 59, 61},
-//            {35, 36, 48, 49, 57, 58, 62, 63}
-//    };
-//
-//    for (int u = 0; u < idct_precision; ++u) {
-//        std::vector<double> row;
-//        for (int x = 0; x < idct_precision; ++x) {
-//            double value = NormCoeff(u) * cos(((2.0 * x + 1.0) * u * M_PI) / 16.0);
-//            row.push_back(value);
-//        }
-//        idct_table.push_back(row);
-//
-//    }
+std::vector<bool> uint8ToBits(const std::vector<uint8_t>& data) {
+    std::vector<bool> bits;
+    for (const auto& byte : data) {
+        for (int i = 7; i >= 0; --i) {
+            bool bit = (byte >> i) & 1;
+            bits.push_back(bit);
+        }
+    }
+    return bits;
+}
 
-    // TODO: GetRoot contains bug
-//    int code = GetRoot(hfTables[16+idx].first, data, pos);
-//    int bits = GetBitN(code, data, pos);
-//    int dccoeff = DecodeNumber(code, bits) + olddccoeff;
-//
-//    base[0] = dccoeff * quant[0];
-//    int l = 1;
-//    while(l < 64){
-//        code = GetRoot(hfTables[16+idx].first, data, pos);
-//        if(code == 0){
-//            break;
-//        }
-//
-//        if (code > 15) {
-//            l += code >> 4;
-//            code = code & 0x0F;
-//        }
-//
-//        bits = GetBitN(code, data, pos);
-//
-//        if(l < 64){
-//            int coeff = DecodeNumber(code, bits);
-//
-//            base[l] = coeff * quant[l];
-//
-//            l+=1;
-//        }
-//    }
-//
-////    rearrange_using_zigzag
-//    for (int x = 0; x < 8; ++x) {
-//        for (int y = 0; y < 8; ++y) {
-//            zigzag[x][y] = base[zigzag[x][y]];
-//        }
-//    }
-//
-//
-//    return std::make_tuple(perform_IDCT(base, idct_precision, zigzag, idct_table), dccoeff);
-//}
+std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vector<uint8_t>& quant, int olddccoeff,
+                                                           std::vector<uint8_t>& data, int& pos) {
+
+    int idct_precision = 8;
+    std::vector<uint8_t> base ={
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0};
+
+    std::vector<std::vector<double>> idct_table;
+
+    std::vector<std::vector<uint8_t>> zigzag = {
+            {0, 1, 5, 6, 14, 15, 27, 28},
+            {2, 4, 7, 13, 16, 26, 29, 42},
+            {3, 8, 12, 17, 25, 30, 41, 43},
+            {9, 11, 18, 24, 31, 40, 44, 53},
+            {10, 19, 23, 32, 39, 45, 52, 54},
+            {20, 22, 33, 38, 46, 51, 55, 60},
+            {21, 34, 37, 47, 50, 56, 59, 61},
+            {35, 36, 48, 49, 57, 58, 62, 63}
+    };
+
+    for (int u = 0; u < idct_precision; ++u) {
+        std::vector<double> row;
+        for (int x = 0; x < idct_precision; ++x) {
+            double value = NormCoeff(u) * cos(((2.0 * x + 1.0) * u * M_PI) / 16.0);
+            row.push_back(value);
+        }
+        idct_table.push_back(row);
+
+    }
+
+    int code = GetCode(hfTablesMap[16+idx].first, uint8ToBits(data), pos);
+    int bits = GetBitN(code, data, pos);
+    int dccoeff = DecodeNumber(code, bits) + olddccoeff;
+
+    base[0] = dccoeff * quant[0];
+    int l = 1;
+    while(l < 64){
+        code = GetCode(hfTablesMap[16+idx].first, uint8ToBits(data), pos);
+        if(code == 0){
+            break;
+        }
+
+        if (code > 15) {
+            l += code >> 4;
+            code = code & 0x0F;
+        }
+
+        bits = GetBitN(code, data, pos);
+
+        if(l < 64){
+            int coeff = DecodeNumber(code, bits);
+
+            base[l] = coeff * quant[l];
+
+            l+=1;
+        }
+    }
+
+//    rearrange_using_zigzag
+    for (int x = 0; x < 8; ++x) {
+        for (int y = 0; y < 8; ++y) {
+            zigzag[x][y] = base[zigzag[x][y]];
+        }
+    }
+
+
+    return std::make_tuple(perform_IDCT(base, idct_precision, zigzag, idct_table), dccoeff);
+
+//    std::vector<std::vector<uint8_t>> empty;
+//    return std::make_tuple(empty, 0);
+}
 
 std::tuple<std::vector<uint8_t>, int> RemoveFF00(const std::vector<uint8_t>& data) {
     std::vector<uint8_t> datapro;
@@ -281,40 +292,41 @@ void WriteDecodedMatrix(int x, int y, std::vector<std::vector<uint8_t>>& matL,
 }
 
 // Define a function for Start of Scan
-//uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<int>& quantMapping, int& height, int& width,
-//                std::unordered_map<int, std::vector<uint8_t>>& quant, std::vector<uint8_t>& img_data,
-//                     std::vector<std::vector<std::tuple<int, int, int>>>& output, std::vector<uint8_t>& dataStream, int& pos, int& scaling_factor, std::pair<int, int>& blockCoordinate, std::pair<int, int>& pixelCoordinate) {
+uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<int>& quantMapping, int& height, int& width,
+                std::unordered_map<int, std::vector<uint8_t>>& quant, std::vector<uint8_t>& img_data,
+                     std::vector<std::vector<std::tuple<int, int, int>>>& output, std::vector<uint8_t>& dataStream, int& pos, int& scaling_factor, std::pair<int, int>& blockCoordinate, std::pair<int, int>& pixelCoordinate) {
+
+    auto [datapro, lenchunk] = RemoveFF00(std::vector<uint8_t>(data.begin() + hdrlen, data.end()));
+    dataStream = datapro;
+
+    int oldlumdccoeff = 0, oldCbdccoeff = 0, oldCrdccoeff = 0;
+
+    for (int y = 0; y < height / 8; ++y) {
+        for (int x = 0; x < width / 8; ++x) {
+
+            auto [matL_base, newlumdccoeff] = BuildMatrix(0,
+                                                          quant[quantMapping[0]], oldlumdccoeff, dataStream, pos);
+            auto [matCr_base, newCrdccoeff] = BuildMatrix(0,
+                                                          quant[quantMapping[1]], oldCrdccoeff, dataStream, pos);
+            auto [matCb_base, newCbdccoeff] = BuildMatrix(0,
+                                                          quant[quantMapping[2]], oldCbdccoeff, dataStream, pos);
+
+
+
+            if (x == blockCoordinate.first && y == blockCoordinate.second) {
+                WriteDecodedMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor, pixelCoordinate);
+            }
+
+//            WriteCompressedMatrix(x, y, img_data, output, scaling_factor);
 //
-//    auto [datapro, lenchunk] = RemoveFF00(std::vector<uint8_t>(data.begin() + hdrlen, data.end()));
-//    dataStream = datapro;
-//
-//    int oldlumdccoeff = 0, oldCbdccoeff = 0, oldCrdccoeff = 0;
-//
-//    for (int y = 0; y < height / 8; ++y) {
-//        for (int x = 0; x < width / 8; ++x) {
-//
-//            auto [matL_base, newlumdccoeff] = BuildMatrix(0,
-//                                                          quant[quantMapping[0]], oldlumdccoeff, dataStream, pos);
-//            auto [matCr_base, newCrdccoeff] = BuildMatrix(0,
-//                                                          quant[quantMapping[1]], oldCrdccoeff, dataStream, pos);
-//            auto [matCb_base, newCbdccoeff] = BuildMatrix(0,
-//                                                          quant[quantMapping[2]], oldCbdccoeff, dataStream, pos);
-//
-//
-//
-//            if (x == blockCoordinate.first && y == blockCoordinate.second) {
-//                WriteDecodedMatrix(x, y, matL_base, matCb_base, matCr_base, output, scaling_factor, pixelCoordinate);
-//            }
-////            WriteCompressedMatrix(x, y, img_data, output, scaling_factor);
-////
-//            oldlumdccoeff = newlumdccoeff;
-//            oldCrdccoeff = newCrdccoeff;
-//            oldCbdccoeff = newCbdccoeff;
-//        }
-//    }
-//
-//    return lenchunk+hdrlen;
-//}
+            oldlumdccoeff = newlumdccoeff;
+            oldCrdccoeff = newCrdccoeff;
+            oldCbdccoeff = newCbdccoeff;
+        }
+    }
+
+    return lenchunk+hdrlen;
+}
 
 void decodeImage(std::vector<std::vector<std::tuple<int, int, int>>>& output, const std::vector<uint8_t>& img_data, int& scaling_factor, std::pair<int, int>& blockCoordinate, std::pair<int, int>& pixelCoordinate){
 
@@ -336,8 +348,26 @@ void decodeImage(std::vector<std::vector<std::tuple<int, int, int>>>& output, co
         } else if (marker == 0xFFD9) {
             break;
         } else {
+            if (data.size() < 4) {
+                // Not enough data to read the length field
+                // might want to handle this case accordingly
+                // Added to fix corrupted Memory
+                break;
+            }
             uint16_t len_chunk = (data[2] << 8) + data[3];
+            if (len_chunk < 2) {
+                // Invalid length, maybe corrupted data
+                // might want to handle this case accordingly
+                // Added to fix corrupted Memory
+                break;
+            }
             len_chunk += 2;
+            if (data.size() < len_chunk) {
+                // Not enough data to read the entire chunk
+                // might want to handle this case accordingly
+                // Added to fix corrupted Memory
+                break;
+            }
 
             std::vector<uint8_t> chunk(data.begin() + 4, data.begin() + len_chunk);
 
@@ -349,9 +379,9 @@ void decodeImage(std::vector<std::vector<std::tuple<int, int, int>>>& output, co
             } else if (marker == 0xFFC0) {
                 BaselineDCT(chunk, quantMapping, height, width);
             }
-//            else if (marker == 0xFFDA) {
-//                len_chunk = StartOfScan(data, len_chunk, quantMapping, height, width, quant, data, output, dataStream, pos, scaling_factor, blockCoordinate, pixelCoordinate);
-//            }
+            else if (marker == 0xFFDA) {
+                len_chunk = StartOfScan(data, len_chunk, quantMapping, height, width, quant, data, output, dataStream, pos, scaling_factor, blockCoordinate, pixelCoordinate);
+            }
             data.erase(data.begin(), data.begin() + len_chunk);
         }
     }

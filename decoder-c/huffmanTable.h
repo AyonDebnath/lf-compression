@@ -20,7 +20,7 @@
 struct MinHeapNode {
 
     // One of the input characters
-    char data;
+    uint8_t data;
 
     // Frequency of the character
     unsigned freq;
@@ -46,7 +46,7 @@ struct MinHeap {
 // A utility function allocate a new
 // min heap node with given character
 // and frequency of the character
-struct MinHeapNode* newNode(char data, unsigned freq)
+struct MinHeapNode* newNode(uint8_t data, unsigned freq)
 {
     struct MinHeapNode* temp = (struct MinHeapNode*)malloc(
             sizeof(struct MinHeapNode));
@@ -193,8 +193,8 @@ int isLeaf(struct MinHeapNode* root)
 // equal to size and inserts all character of
 // data[] in min heap. Initially size of
 // min heap is equal to capacity
-struct MinHeap* createAndBuildMinHeap(char data[],
-                                      int freq[], int size)
+struct MinHeap* createAndBuildMinHeap(std::vector<uint8_t> data,
+                                      std::vector<int> freq, int size)
 
 {
 
@@ -210,8 +210,8 @@ struct MinHeap* createAndBuildMinHeap(char data[],
 }
 
 // The main function that builds Huffman tree
-struct MinHeapNode* buildHuffmanTree(char data[],
-                                     int freq[], int size)
+struct MinHeapNode* buildHuffmanTree(std::vector<uint8_t> data,
+                                     std::vector<int> freq, int size)
 
 {
     struct MinHeapNode *left, *right, *top;
@@ -283,21 +283,50 @@ void printCodes(struct MinHeapNode* root, int arr[],
     }
 }
 
+uint8_t GetCode(struct MinHeapNode* root, std::vector<bool> code, int& index) {
+    if (root == NULL) {
+        return NULL;
+    }
+
+    // If the current node is a leaf, return the leaf node
+    if (isLeaf(root)) {
+        return root->data;
+    }
+
+    // If there are more bits in the code, traverse the tree accordingly
+    if (index < code.size()) {
+        if (code[index] == 0) {
+            index += 1;
+            return GetCode(root->left, code, index);
+        } else if (code[index] == 1) {
+            index += 1;
+            return GetCode(root->right, code, index);
+        }
+    }
+
+    // Invalid code or internal node encountered
+    return NULL;
+}
+
+
 // The main function that builds a
 // Huffman Tree and print codes by traversing
 // the built Huffman Tree
-void HuffmanCodes(char data[], int freq[], int size)
+void HuffmanCodes(std::vector<uint8_t> data, std::vector<int> freq, int size,
+                  std::unordered_map<uint8_t, std::pair<MinHeapNode*, std::vector<uint8_t>>>& hfTablesMap, uint8_t header)
 
 {
     // Construct Huffman Tree
-    struct MinHeapNode* root
-            = buildHuffmanTree(data, freq, size);
+    struct MinHeapNode* root = buildHuffmanTree(data, freq, size);
 
     // Print Huffman codes using
     // the Huffman tree built above
-    int arr[MAX_TREE_HT], top = 0;
+//    int arr[MAX_TREE_HT], top = 0;
+//
+//    printCodes(root, arr, top);
 
-    printCodes(root, arr, top);
+    hfTablesMap[header].first = root;
+    hfTablesMap[header].second = data;
 }
 
 //int main()
