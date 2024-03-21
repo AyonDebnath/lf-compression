@@ -92,6 +92,10 @@ int main() {
 
 void getJpegDimensions(FILE* infile, int& width, int& height) {
 
+    /*
+     * calculates the height and width of the JPEG image
+     */
+
     // JPEG file format marker bytes
     const uint8_t SOI_marker[] = {0xFF, 0xD8};  // Start of Image
     const uint8_t APP0_marker[] = {0xFF, 0xE0}; // APP0 marker

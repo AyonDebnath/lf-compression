@@ -8,9 +8,19 @@
 
 std::unordered_map<uint8_t, std::pair<MinHeapNode*, std::vector<uint8_t>>> hfTablesMap;
 
+
 void convertImageWithSamplingFactor(const std::string& input_image_path,
                                     const std::string& converted_image_path,
                                     const std::string& sampling_factor) {
+    /*
+     *
+     * input_image_path,: image provided by the user
+     * converted_image_path: converted image with the with chroma sampling
+     * sampling_factor: sampling factors to be used by the JPEG encoder for chroma downsampling
+     *
+     * Converts the JPEG image provided as input to a Y, Cr, Cb colour channel.
+     */
+
     std::string command = "convert " + input_image_path +
                           " -sampling-factor " + sampling_factor +
                           " " + converted_image_path;
@@ -25,6 +35,11 @@ void convertImageWithSamplingFactor(const std::string& input_image_path,
 }
 
 std::vector<bool> uint8ToBits(const std::vector<uint8_t>& data) {
+    /*
+     * data: vector containing the data to be converted to bits
+     *
+     * converts the elements of a vector to bits
+     */
     std::vector<bool> bits;
     for (const auto& byte : data) {
         for (int i = 7; i >= 0; --i) {
@@ -37,6 +52,13 @@ std::vector<bool> uint8ToBits(const std::vector<uint8_t>& data) {
 
 // Define a function to decode Huffman
 void decodeHuffman(std::vector<uint8_t>& chunk) {
+
+    /*
+     * data: chunk of the image data containing the encoded huffman table
+     *
+     * When the huffman marker, 0xFFC4, is reached, it gets the huffman tables from the image data and stores it in the hfTablesMap
+     */
+
     while (chunk.size() > 0) {
         size_t offset = 0;
         uint8_t header = chunk[offset];
@@ -70,6 +92,15 @@ void decodeHuffman(std::vector<uint8_t>& chunk) {
 
 // Define a function to define quantization tables
 void DefineQuantizationTables(const std::vector<uint8_t>& chunk, std::unordered_map<int, std::vector<uint8_t>>& quant) {
+
+    /*
+     * chunk: chunk of the image data containing the information about the quantization tables.
+     * quant: hashmap to store the quantization data
+     *
+     * This function first parses the header of a Quantization Table section.
+     * Subsequently, it stores the quantization data in a hashmap, utilizing the header value as the respective key.
+     * For luminance, the header value is set to 0, while for chrominance, it is set to 1.
+     */
     size_t pos = 0;
     while (pos < chunk.size()) {
         uint8_t hdr = chunk[pos];
@@ -79,8 +110,19 @@ void DefineQuantizationTables(const std::vector<uint8_t>& chunk, std::unordered_
     }
 }
 
-// Define a function for Baseline DCT
 void BaselineDCT(const std::vector<uint8_t>& chunk, std::vector<int>& quantMapping, int& height, int& width) {
+
+    /*
+     *
+     * chunk: chunk of the image data containing essential image information such as the quantization table numbers.
+     * quantMapping: vector to store the quantization table numbers
+     * height: height of the image
+     * width: width of the image
+     *
+     * The BaselineDCT method extracts essential data from the Start of Frame (SOF) section.
+     * It then compiles the quantization table numbers for each component, storing them in the quantMapping vector.
+     */
+
 
     std::tuple<uint8_t, uint16_t, uint16_t, uint8_t> header;
     std::memcpy(&header, &chunk[0], sizeof(header));
@@ -98,6 +140,9 @@ void BaselineDCT(const std::vector<uint8_t>& chunk, std::vector<int>& quantMappi
 }
 
 double NormCoeff(int n) {
+    /*
+     *  helper function for the IDCT calculation
+     */
     if (n == 0) {
         return 1.0 / std::sqrt(2.0);
     } else {
@@ -106,6 +151,12 @@ double NormCoeff(int n) {
 }
 
 int DecodeNumber(int code, int bits) {
+    /*
+     * code: the number of bits used to encode a number.
+     * bits: the actual encoded number
+     *
+     * extract the delta encoded DC coefficient
+     */
     int l = pow(2, code - 1);
     if (bits >= l) {
         return bits;
@@ -116,6 +167,10 @@ int DecodeNumber(int code, int bits) {
 
 std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<uint8_t>& base, int& idct_precision, std::vector<std::vector<uint8_t>>& zigzag, std::vector<std::vector<double>>& idct_table) {
     std::vector<std::vector<uint8_t>> out(8, std::vector<uint8_t>(8));
+
+    /*
+     * undo the Discrete Cosine Transformation
+     */
 
     for (int x = 0; x < 8; ++x) {
         for (int y = 0; y < 8; ++y) {
@@ -135,6 +190,16 @@ std::vector<std::vector<uint8_t>> perform_IDCT(std::vector<uint8_t>& base, int& 
 
 std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vector<uint8_t>& quant, int olddccoeff,
                                                            std::vector<uint8_t>& data, int& pos) {
+
+    /*
+     * idx: 0 for luminance and 1 for others.
+     * quant : quantization table
+     * olddccoeff: old/previous dc coefficient
+     * data: the datastream which provides the code for getting the code from the huffman table
+     * pos: position in the datastream
+     *
+     * creates an inverse discrete cosine transformation matrix and Y, Cr, and Cb matrices.
+    */
 
     int idct_precision = 8;
     std::vector<uint8_t> base ={
@@ -211,6 +276,13 @@ std::tuple<std::vector<std::vector<uint8_t>>, int> BuildMatrix(int idx, std::vec
 }
 
 std::tuple<std::vector<uint8_t>, int> RemoveFF00(const std::vector<uint8_t>& data) {
+
+    /*
+     * data: image data which contains the 0x00 marker
+     *
+     * Removes 0x00 after 0xff in the image scan section of JPEG
+     */
+
     std::vector<uint8_t> datapro;
     int i = 0;
     while (true) {
@@ -236,6 +308,14 @@ uint8_t Clamp(int col) {
 }
 
 std::tuple<uint8_t, uint8_t, uint8_t> ColorConversion(int Y, int Cr, int Cb) {
+    /*
+     * Y: Luminance value
+     * Cr: Red component value
+     * Cb: Blue component value
+     *
+     * Converts Y, Cr and Cb to RGB color space
+     *
+     */
     // Constants for color conversion
     const double kR = 2 - 2 * 0.299;
     const double kB = 2 - 2 * 0.114;
@@ -256,7 +336,22 @@ std::tuple<uint8_t, uint8_t, uint8_t> ColorConversion(int Y, int Cr, int Cb) {
 
 void WriteDecodedMatrix(int x, int y, std::vector<std::vector<uint8_t>>& matL,
                         std::vector<std::vector<uint8_t>>& matCb, std::vector<std::vector<uint8_t>>& matCr,
-                        std::vector<std::vector<std::tuple<int, int, int>>>& output, int scaling_factor, std::pair<int, int>& pixelCoordinate) {
+                        std::vector<std::vector<std::tuple<int, int, int>>>& output, int scaling_factor,
+                        std::pair<int, int>& pixelCoordinate) {
+
+    /*
+     * x: value of the x coordinate in the MCU block
+     * y: value of the y coordinate in the MCU block
+     * matL: Luminance matrix
+     * matCb: Blue component matrix
+     * matCr: Red component matrix
+     * output: the array of the output image.
+     * scaling_factor: scaling factor if we want to scale the output image
+     * pixelCoordinate: pixelCoordinate of the pixel to decode
+     *
+     * Loops over a single 8x8 MCU and writes the decoded value on a 2d array representing the output image.
+     */
+
     // Iterate over each pixel in the 8x8 MCU block
     for (int yy = 0; yy < 8; ++yy) {
         for (int xx = 0; xx < 8; ++xx) {
@@ -289,11 +384,25 @@ void WriteDecodedMatrix(int x, int y, std::vector<std::vector<uint8_t>>& matL,
     }
 }
 
-// Define a function for Start of Scan
 uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<int>& quantMapping, int& height, int& width,
                 std::unordered_map<int, std::vector<uint8_t>>& quant, std::vector<uint8_t>& img_data,
                      std::vector<std::vector<std::tuple<int, int, int>>>& output, std::vector<uint8_t>& dataStream, int& pos, int& scaling_factor, std::pair<int, int>& blockCoordinate, std::pair<int, int>& pixelCoordinate) {
 
+    /*
+     * data: chunk of the image data that contains the "actual" data for the image
+     * hdrlen: length of the header at the beginning of the data.
+     * quantMapping:vector to store the quantization table numbers
+     * height: height of the image
+     * width: width of the image
+     * img_data: stores the image data as a vector
+     * output: stores the image data with the decoded pixel as a vector
+     * dataStream:the datastream which provides the code for getting the code from the huffman table
+     * pos: position in the datastream
+     * scaling_factor: scaling factor if we want to scale the output image
+     *
+     * This is the most involved step.
+     * All the decoded information so far serves as a map that helps us in navigating and decoding the actual image data which happens over here.
+     */
     auto [datapro, lenchunk] = RemoveFF00(std::vector<uint8_t>(data.begin() + hdrlen, data.end()));
     dataStream = datapro;
 
@@ -327,8 +436,18 @@ uint16_t StartOfScan(std::vector<uint8_t>& data, uint16_t& hdrlen, std::vector<i
     return lenchunk+hdrlen;
 }
 
-void decodeImage(std::vector<std::vector<std::tuple<int, int, int>>>& output, const std::vector<uint8_t>& img_data, int& scaling_factor, std::pair<int, int>& blockCoordinate, std::pair<int, int>& pixelCoordinate){
+void decodeImage(std::vector<std::vector<std::tuple<int, int, int>>>& output, const std::vector<uint8_t>& img_data,
+                 int& scaling_factor, std::pair<int, int>& blockCoordinate, std::pair<int, int>& pixelCoordinate){
 
+    /*
+     * output: stores the image data with the decoded pixel as a vector
+     * img_data: image data that contains the "actual" data for the image
+     * scaling_factor: scaling factor if we want to scale the output image
+     * blockCoordinate: MCU block coordinate where the pixel to be decoded is present
+     * pixelCoordinate: pixelCoordinate of the pixel to decode
+     *
+     * Entry point to the decoder. It takes in the image data, loops through all the markers and decodes the Image.
+    */
     // Variables:
     int height, width;
     std::vector<int> quantMapping;
