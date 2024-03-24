@@ -629,67 +629,54 @@ void printHeader(const JPGImage* const image) {
     std::cout << "Restart Interval: " << image->restartInterval << '\n';
 }
 
-// helper class to read bits from a byte vector
-class BitReader {
-private:
-    uint nextByte = 0;
-    uint nextBit = 0;
-    const std::vector<byte>& data;
-
-public:
-    BitReader(const std::vector<byte>& d) :
-    data(d)
-    {}
-
-    // read one bit (0 or 1) or return -1 if all bits have already been read
-    int readBit() {
-        if (nextByte >= data.size()) {
-            return -1;
-        }
-        int bit = (data[nextByte] >> (7 - nextBit)) & 1;
-        nextBit += 1;
-        if (nextBit == 8) {
-            nextBit = 0;
-            nextByte += 1;
-        }
-        return bit;
+// read one bit (0 or 1) or return -1 if all bits have already been read
+int readBit(BitReader& reader) {
+    if (reader.nextByte >= reader.data.size()) {
+        return -1;
     }
-
-    // read a variable number of bits
-    // first read bit is most significant bit
-    // return -1 if at any point all bits have already been read
-    int readBits(const uint length) {
-        int bits = 0;
-        for (uint i = 0; i < length; ++i) {
-            int bit = readBit();
-            if (bit == -1) {
-                bits = -1;
-                break;
-            }
-            bits = (bits << 1) | bit;
-        }
-        return bits;
+    int bit = (reader.data[reader.nextByte] >> (7 - reader.nextBit)) & 1;
+    reader.nextBit += 1;
+    if (reader.nextBit == 8) {
+        reader.nextBit = 0;
+        reader.nextByte += 1;
     }
+    return bit;
+}
 
-    // if there are bits remaining,
-    //   advance to the 0th bit of the next byte
-    void align() {
-        if (nextByte >= data.size()) {
-            return;
+// read a variable number of bits
+// first read bit is most significant bit
+// return -1 if at any point all bits have already been read
+int readBits(const uint length, BitReader& reader) {
+    int bits = 0;
+    for (uint i = 0; i < length; ++i) {
+        int bit = readBit(reader);
+        if (bit == -1) {
+            bits = -1;
+            break;
         }
-        if (nextBit != 0) {
-            nextBit = 0;
-            nextByte += 1;
-        }
+        bits = (bits << 1) | bit;
     }
-};
+    return bits;
+}
+
+// if there are bits remaining,
+//   advance to the 0th bit of the next byte
+void align(BitReader& reader) {
+    if (reader.nextByte >= reader.data.size()) {
+        return;
+    }
+    if (reader.nextBit != 0) {
+        reader.nextBit = 0;
+        reader.nextByte += 1;
+    }
+}
 
 // return the symbol from the Huffman table that corresponds to
 //   the next Huffman code read from the BitReader
 byte getNextSymbol(BitReader& bitReader, const HuffmanTable& hTable) {
     uint currentCode = 0;
     for (uint i = 0; i < 16; ++i) {
-        int bit = bitReader.readBit();
+        int bit = readBit(bitReader);
         if (bit == -1) {
             return -1;
         }
@@ -719,7 +706,7 @@ bool decodeBlockComponent(BitReader& bitReader, int* const component, int& previ
         return false;
     }
 
-    int coeff = bitReader.readBits(length);
+    int coeff = readBits(length, bitReader);
     if (coeff == -1) {
         std::cout << "Error - Invalid DC value\n";
         return false;
@@ -758,7 +745,7 @@ bool decodeBlockComponent(BitReader& bitReader, int* const component, int& previ
             std::cout << "Error - AC coefficient length greater than 10\n";
             return false;
         }
-        coeff = bitReader.readBits(coeffLength);
+        coeff = readBits(coeffLength, bitReader);
         if (coeff == -1) {
             std::cout << "Error - Invalid AC value\n";
             return false;
@@ -784,7 +771,7 @@ void decodeHuffmanData(JPGImage* const image) {
                 previousDCs[0] = 0;
                 previousDCs[1] = 0;
                 previousDCs[2] = 0;
-                bitReader.align();
+                align(bitReader);
             }
 
             for (uint i = 0; i < image->numComponents; ++i) {
@@ -1041,7 +1028,7 @@ void putShort(std::ofstream& outFile, const uint v) {
 }
 
 // write all the pixels in the MCUs to a BMP file
-void writeBMP(const JPGImage* const image, const std::string& filename) {
+void writeBMP(const JPGImage* const image, const std::string& filename, const std::pair<uint, uint>& pixelCoordinates) {
     // open file
     std::ofstream outFile = std::ofstream(filename, std::ios::out | std::ios::binary);
     if (!outFile.is_open()) {
@@ -1074,6 +1061,10 @@ void writeBMP(const JPGImage* const image, const std::string& filename) {
             outFile.put(image->blocks[blockIndex].b[pixelIndex]);
             outFile.put(image->blocks[blockIndex].g[pixelIndex]);
             outFile.put(image->blocks[blockIndex].r[pixelIndex]);
+            if(x == pixelCoordinates.first && y == pixelCoordinates.second){
+                std::cout << "The RGB values at x = " << x << " and y = " << y <<" is ";
+                std::cout << "("<<image->blocks[blockIndex].r[pixelIndex] <<","<< image->blocks[blockIndex].g[pixelIndex] <<","<< image->blocks[blockIndex].b[pixelIndex]<<")"<<std::endl;
+            }
         }
         for (uint i = 0; i < paddingSize; ++i) {
             outFile.put(0);
@@ -1085,53 +1076,64 @@ void writeBMP(const JPGImage* const image, const std::string& filename) {
 
 int main(int argc, char** argv) {
     // validate arguments
-    if (argc < 2) {
+    if (argc < 4) {
         std::cout << "Error - Invalid arguments\n";
         return 1;
     }
 
-    for (int i = 1; i < argc; ++i) {
-        const std::string filename(argv[i]);
+    uint x_coordinate;
+    uint y_coordinate;
+    try{
+       x_coordinate = std::stoi(argv[2]);
+       y_coordinate = std::stoi(argv[3]);
+    }
+    catch (const std::exception& e){
+        std::cout << "Error - Invalid pixel coordinates\n";
+        return 1;
+    }
 
-        // read image
-        JPGImage* image = readJPG(filename);
-        // validate image
-        if (image == nullptr) {
-            continue;
-        }
-        if (image->blocks == nullptr) {
-            delete image;
-            continue;
-        }
-        if (image->valid == false) {
-            delete[] image->blocks;
-            delete image;
-            continue;
-        }
+    const std::pair<uint, uint> pixelCoordinates(x_coordinate, y_coordinate);
+    const std::string filename(argv[1]);
 
-        printHeader(image);
 
-        // decode Huffman data
-        decodeHuffmanData(image);
-
-        // dequantize DCT coefficients
-        dequantize(image);
-
-        // Inverse Discrete Cosine Transform
-        inverseDCT(image);
-
-        // color conversion
-        YCbCrToRGB(image);
-
-        // write BMP file
-        const std::size_t pos = filename.find_last_of('.');
-        const std::string outFilename = (pos == std::string::npos) ?
-            (filename + ".bmp") :
-            (filename.substr(0, pos) + ".bmp");
-        writeBMP(image, outFilename);
-
+    // read image
+    JPGImage* image = readJPG(filename);
+    // validate image
+    if (image == nullptr) {
+        return 1;
+    }
+    if (image->blocks == nullptr) {
+        delete image;
+        return 1;
+    }
+    if (image->valid == false) {
         delete[] image->blocks;
         delete image;
+        return 1;
     }
+
+    printHeader(image);
+
+    // decode Huffman data
+    decodeHuffmanData(image);
+
+    // dequantize DCT coefficients
+    dequantize(image);
+
+    // Inverse Discrete Cosine Transform
+    inverseDCT(image);
+
+    // color conversion
+    YCbCrToRGB(image);
+
+    // write BMP file
+    const std::size_t pos = filename.find_last_of('.');
+    const std::string outFilename = (pos == std::string::npos) ?
+        (filename + ".bmp") :
+        (filename.substr(0, pos) + ".bmp");
+    writeBMP(image, outFilename, pixelCoordinates);
+
+    delete[] image->blocks;
+    delete image;
     return 0;
 }

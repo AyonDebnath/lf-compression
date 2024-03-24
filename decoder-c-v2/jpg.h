@@ -176,6 +176,13 @@ struct JPGImage {
     byte verticalSamplingFactor = 0;
 };
 
+struct BitReader {
+    uint nextByte = 0;
+    uint nextBit = 0;
+    const std::vector<byte>& data;
+
+    BitReader(const std::vector<byte>& d) : data(d) {}
+};
 
 const byte zigZagMap[] = {
     0,   1,  8, 16,  9,  2,  3, 10,
