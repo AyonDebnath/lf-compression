@@ -106,48 +106,16 @@ struct HuffmanTable {
 };
 
 struct ColorComponent {
-    byte horizontalSamplingFactor = 1;
-    byte verticalSamplingFactor = 1;
+    byte horizontalSamplingFactor = 0;
+    byte verticalSamplingFactor = 0;
     byte quantizationTableID = 0;
     byte huffmanDCTableID = 0;
     byte huffmanACTableID = 0;
-    bool used = false;
+    bool usedInFrame = false;
+    bool usedInScan = false;
 };
 
-struct Header {
-    QuantizationTable quantizationTables[4];
-    HuffmanTable huffmanDCTables[4];
-    HuffmanTable huffmanACTables[4];
-
-    byte frameType = 0;
-    uint height = 0;
-    uint width = 0;
-    byte numComponents = 0;
-    bool zeroBased = false;
-
-    byte startOfSelection = 0;
-    byte endOfSelection = 63;
-    byte successiveApproximationHigh = 0;
-    byte successiveApproximationLow = 0;
-
-    uint restartInterval = 0;
-
-    ColorComponent colorComponents[3];
-
-    std::vector<byte> huffmanData;
-
-    bool valid = true;
-
-    uint mcuHeight = 0;
-    uint mcuWidth = 0;
-    uint mcuHeightReal = 0;
-    uint mcuWidthReal = 0;
-
-    byte horizontalSamplingFactor = 1;
-    byte verticalSamplingFactor = 1;
-};
-
-struct MCU {
+struct Block {
     union {
         int y[64] = { 0 };
         int r[64];
@@ -174,15 +142,50 @@ struct MCU {
     }
 };
 
+struct JPGImage {
+    QuantizationTable quantizationTables[4];
+    HuffmanTable huffmanDCTables[4];
+    HuffmanTable huffmanACTables[4];
+    ColorComponent colorComponents[3];
+
+    byte frameType = 0;
+    uint height = 0;
+    uint width = 0;
+    byte numComponents = 0;
+    bool zeroBased = false;
+
+    byte componentsInScan = 0;
+    byte startOfSelection = 0;
+    byte endOfSelection = 0;
+    byte successiveApproximationHigh = 0;
+    byte successiveApproximationLow = 0;
+
+    uint restartInterval = 0;
+
+    std::vector<byte> huffmanData;
+    Block* blocks = nullptr;
+
+    bool valid = true;
+
+    uint blockHeight = 0;
+    uint blockWidth = 0;
+    uint blockHeightReal = 0;
+    uint blockWidthReal = 0;
+
+    byte horizontalSamplingFactor = 0;
+    byte verticalSamplingFactor = 0;
+};
+
+
 const byte zigZagMap[] = {
-        0,   1,  8, 16,  9,  2,  3, 10,
-        17, 24, 32, 25, 18, 11,  4,  5,
-        12, 19, 26, 33, 40, 48, 41, 34,
-        27, 20, 13,  6,  7, 14, 21, 28,
-        35, 42, 49, 56, 57, 50, 43, 36,
-        29, 22, 15, 23, 30, 37, 44, 51,
-        58, 59, 52, 45, 38, 31, 39, 46,
-        53, 60, 61, 54, 47, 55, 62, 63
+    0,   1,  8, 16,  9,  2,  3, 10,
+    17, 24, 32, 25, 18, 11,  4,  5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13,  6,  7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
 };
 
 // IDCT scaling factors
