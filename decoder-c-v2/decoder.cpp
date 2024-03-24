@@ -373,6 +373,7 @@ void readComment(std::ifstream& inFile, JPGImage* const image) {
     }
 }
 
+// helper function for readJPG to read the frame headers and call the appropriate function
 void readFrameHeader(std::ifstream& inFile, JPGImage* const image) {
     // first two bytes must be 0xFF, SOI
     byte last = inFile.get();
@@ -473,6 +474,7 @@ void readFrameHeader(std::ifstream& inFile, JPGImage* const image) {
     }
 }
 
+// helper function for readJPG to read the huffman coded bitstream
 void readScans(std::ifstream& inFile, JPGImage* const image) {
     byte last;
     byte current = inFile.get();
@@ -520,6 +522,7 @@ void readScans(std::ifstream& inFile, JPGImage* const image) {
     }
 }
 
+// reads all the information from the JPEG file and stores them in the JPGImage struct
 JPGImage* readJPG(const std::string& filename) {
     // open file
     std::ifstream inFile = std::ifstream(filename, std::ios::in | std::ios::binary);
