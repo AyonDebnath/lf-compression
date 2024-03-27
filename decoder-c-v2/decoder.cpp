@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 #include "jpg.h"
 
@@ -552,9 +553,9 @@ JPGImage* readJPG(const std::string& filename) {
         inFile.close();
         return image;
     }
-
+    std::cout << "Above: " <<image->colorComponents[1].DCCoefficients.size()<<"\n";
     readScans(inFile, image);
-
+    std::cout << "Below: " <<image->colorComponents[1].DCCoefficients.size()<<"\n";
     inFile.close();
     return image;
 }
@@ -626,10 +627,17 @@ void printHeader(const JPGImage* const image) {
         std::cout << "Component ID: " << (i + 1) << '\n';
         std::cout << "Huffman DC Table ID: " << (uint)image->colorComponents[i].huffmanDCTableID << '\n';
         std::cout << "Huffman AC Table ID: " << (uint)image->colorComponents[i].huffmanACTableID << '\n';
+        std::cout << "DC Coefficients: " << '\n';
+        for(uint j = 0; j < (uint)image->colorComponents[i].DCCoefficients.size(); j++){
+            std::cout<< image->colorComponents[i].DCCoefficients[j] << " ";
+        }
+        std::cout<<"\n";
     }
     std::cout << "Length of Huffman Data: " << image->huffmanData.size() << '\n';
     std::cout << "DRI=============\n";
     std::cout << "Restart Interval: " << image->restartInterval << '\n';
+
+
 }
 
 // read one bit (0 or 1) or return -1 if all bits have already been read
@@ -643,6 +651,7 @@ int readBit(BitReader& reader) {
         reader.nextBit = 0;
         reader.nextByte += 1;
     }
+    reader.counter += 1;
     return bit;
 }
 
@@ -659,6 +668,7 @@ int readBits(const uint length, BitReader& reader) {
         }
         bits = (bits << 1) | bit;
     }
+    reader.counter += length;
     return bits;
 }
 
@@ -695,7 +705,7 @@ byte getNextSymbol(BitReader& bitReader, const HuffmanTable& hTable) {
 
 // fill the coefficients of a block component based on Huffman codes
 //   read from the BitReader
-bool decodeBlockComponent(BitReader& bitReader, int* const component, int& previousDC,
+bool decodeBlockComponent(BitReader& bitReader, int* const component, int& previousDC, std::vector<int>& DCCoefficients,
                         const HuffmanTable& dcTable,
                         const HuffmanTable& acTable) {
     // get the DC value for this block component
@@ -719,6 +729,11 @@ bool decodeBlockComponent(BitReader& bitReader, int* const component, int& previ
     }
     component[0] = coeff + previousDC;
     previousDC = component[0];
+    DCCoefficients.push_back(coeff + previousDC);
+//    std::cout <<"DCCoeffients Size: "<< DCCoefficients.size() << '\n';
+//    std::cout <<"component[0]: "<< component[0] << '\n';
+
+
 
     // get the AC values for this block component
     for (uint i = 1; i < 64; ++i) {
@@ -758,6 +773,7 @@ bool decodeBlockComponent(BitReader& bitReader, int* const component, int& previ
         }
         component[zigZagMap[i]] = coeff;
     }
+
     return true;
 }
 
@@ -778,17 +794,23 @@ void decodeHuffmanData(JPGImage* const image) {
             }
 
             for (uint i = 0; i < image->numComponents; ++i) {
-                const ColorComponent& component = image->colorComponents[i];
+                ColorComponent& component = image->colorComponents[i];
                 for (uint v = 0; v < component.verticalSamplingFactor; ++v) {
                     for (uint h = 0; h < component.horizontalSamplingFactor; ++h) {
+//                        std::cout <<"Before the loop: " << image->colorComponents[i].DCCoefficients.size() <<'\n';
                         if (!decodeBlockComponent(
                                 bitReader,
                                 image->blocks[(y + v) * image->blockWidthReal + (x + h)][i],
                                 previousDCs[i],
+                                image->colorComponents[i].DCCoefficients,
                                 image->huffmanDCTables[component.huffmanDCTableID],
                                 image->huffmanACTables[component.huffmanACTableID])) {
                             return;
                         }
+//                        std::cout <<"After the loop: " << image->colorComponents[i].DCCoefficients.size() <<'\n';
+//                        for (int j = 0; j < image->colorComponents[i].DCCoefficients.size(); j++){
+//                            std::cout << image->colorComponents[i].DCCoefficients[j];
+//                        }
                     }
                 }
             }
@@ -1115,10 +1137,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    printHeader(image);
+
 
     // decode Huffman data
     decodeHuffmanData(image);
+
+    printHeader(image);
 
     // dequantize DCT coefficients
     dequantize(image);

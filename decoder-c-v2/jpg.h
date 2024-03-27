@@ -111,6 +111,7 @@ struct ColorComponent {
     byte quantizationTableID = 0;
     byte huffmanDCTableID = 0;
     byte huffmanACTableID = 0;
+    std::vector<int> DCCoefficients;
     bool usedInFrame = false;
     bool usedInScan = false;
 };
@@ -179,6 +180,7 @@ struct JPGImage {
 struct BitReader {
     uint nextByte = 0;
     uint nextBit = 0;
+    uint counter = 0;
     const std::vector<byte>& data;
 
     BitReader(const std::vector<byte>& d) : data(d) {}
